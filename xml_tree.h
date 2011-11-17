@@ -13,20 +13,20 @@ typedef struct xml_node XML_NODE;
 typedef struct xml_tree XML_TREE;
 
 struct xml_tree {
-XML_Parser parser;
-XML_NODE *root_node;
-XML_NODE *current_node;
+	XML_Parser parser;
+	XML_NODE *root_node;
+	XML_NODE *current_node;
 };
 
 struct xml_node {
-XML_Char *name;
-XML_Char *data;
-XML_Char *ns;
-XML_NODE *parent_node;
-XML_NODE *prev_node;
-XML_NODE *next_node;
-XML_NODE *first_child_node;
-XML_NODE *last_child_node;
+	XML_Char *name;
+	XML_Char *data;
+	XML_Char *ns;
+	XML_NODE *parent_node;
+	XML_NODE *prev_node;
+	XML_NODE *next_node;
+	XML_NODE *first_child_node;
+	XML_NODE *last_child_node;
 };
 
 

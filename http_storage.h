@@ -14,26 +14,26 @@ typedef int (*HTTP_STORAGE_CLOSE)(HTTP_STORAGE *storage);
 typedef void (*HTTP_STORAGE_DESTROY)(HTTP_STORAGE *storage);
 
 struct http_storage {
-HTTP_STORAGE_WRITE write;
-HTTP_STORAGE_READ read;
-HTTP_STORAGE_SEEK seek;
-HTTP_STORAGE_GETSIZE getsize;
-HTTP_STORAGE_CLOSE close;
-HTTP_STORAGE_DESTROY destroy;
+	HTTP_STORAGE_WRITE write;
+	HTTP_STORAGE_READ read;
+	HTTP_STORAGE_SEEK seek;
+	HTTP_STORAGE_GETSIZE getsize;
+	HTTP_STORAGE_CLOSE close;
+	HTTP_STORAGE_DESTROY destroy;
 };
 
 struct http_memory_storage {
-HTTP_STORAGE functions;
-char *content;
-int content_index;
-int content_size;
-int content_buffer_size;
+	HTTP_STORAGE functions;
+	char *content;
+	int content_index;
+	int content_size;
+	int content_buffer_size;
 };
 
 struct http_file_storage {
-HTTP_STORAGE functions;
-FILE *file;
-int file_size;
+	HTTP_STORAGE functions;
+	FILE *file;
+	int file_size;
 };
 
 int http_create_memory_storage(HTTP_MEMORY_STORAGE **storage);

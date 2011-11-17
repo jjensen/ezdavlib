@@ -56,52 +56,52 @@ typedef struct http_auth_parameter HTTP_AUTH_PARAMETER;
 typedef struct http_auth_info HTTP_AUTH_INFO;
 
 struct http_connection {
-SOCKET socketd;
-int status;
-char *host;
-struct sockaddr_in address;
-int persistent;
-HTTP_AUTH_INFO *auth_info;
+	SOCKET socketd;
+	int status;
+	char *host;
+	struct sockaddr_in address;
+	int persistent;
+	HTTP_AUTH_INFO *auth_info;
 };
 
 #define hoststr(c)		((c->host != NULL) ? c->host : inet_ntoa(c->address.sin_addr))
 
 struct http_header_field {
-char *name;
-char *value;
-HTTP_HEADER_FIELD *prev_field;
-HTTP_HEADER_FIELD *next_field;
+	char *name;
+	char *value;
+	HTTP_HEADER_FIELD *prev_field;
+	HTTP_HEADER_FIELD *next_field;
 };
 
 struct http_auth_parameter {
-char *name;
-char *value;
-HTTP_AUTH_PARAMETER *next_parameter;
-HTTP_AUTH_PARAMETER *prev_parameter;
+	char *name;
+	char *value;
+	HTTP_AUTH_PARAMETER *next_parameter;
+	HTTP_AUTH_PARAMETER *prev_parameter;
 };
 
 struct http_auth_info {
-char *method;
-int count;
-HTTP_AUTH_PARAMETER *first_parameter;
-HTTP_AUTH_PARAMETER *last_parameter;
+	char *method;
+	int count;
+	HTTP_AUTH_PARAMETER *first_parameter;
+	HTTP_AUTH_PARAMETER *last_parameter;
 };
 
 struct http_request {
-int method;
-char *resource;
-HTTP_HEADER_FIELD *first_header_field;
-HTTP_HEADER_FIELD *last_header_field;
-HTTP_STORAGE *content;
+	int method;
+	char *resource;
+	HTTP_HEADER_FIELD *first_header_field;
+	HTTP_HEADER_FIELD *last_header_field;
+	HTTP_STORAGE *content;
 };
 
 struct http_response {
-int status_code;
-char *status_msg;
-char *version;
-HTTP_HEADER_FIELD *first_header_field;
-HTTP_HEADER_FIELD *last_header_field;
-HTTP_STORAGE *content;
+	int status_code;
+	char *status_msg;
+	char *version;
+	HTTP_HEADER_FIELD *first_header_field;
+	HTTP_HEADER_FIELD *last_header_field;
+	HTTP_STORAGE *content;
 };
 
 typedef int (*HTTP_EVENT_HANDLER)(HTTP_CONNECTION *connection, HTTP_REQUEST *request, HTTP_RESPONSE *response, void *data);
@@ -112,9 +112,9 @@ int http_add_header_field(HTTP_REQUEST *request, const char *field_name, const c
 int http_add_header_field_number(HTTP_REQUEST *request, const char *field_name, int field_value);
 
 int http_exec(HTTP_CONNECTION *connection, int method, const char *resource, 
-              HTTP_EVENT_HANDLER on_request_header, HTTP_EVENT_HANDLER on_request_entity, 
-		      HTTP_EVENT_HANDLER on_response_header, HTTP_EVENT_HANDLER on_response_entity,
-		      void *data);
+		HTTP_EVENT_HANDLER on_request_header, HTTP_EVENT_HANDLER on_request_entity, 
+		HTTP_EVENT_HANDLER on_response_header, HTTP_EVENT_HANDLER on_response_entity,
+		void *data);
 int http_exec_error(void);
 const char * http_exec_error_msg(void);
 

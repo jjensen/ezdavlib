@@ -7,20 +7,20 @@ typedef struct dav_opendir_data DAV_OPENDIR_DATA;
 #define OD_FILE			DAV_RESOURCETYPE_OTHER
 
 struct dav_opendir_data {
-const char *href;				// resource info
-DAV_PROP *prop;
+	const char *href;				// resource info
+	DAV_PROP *prop;
 
-const char *filename;			// info extracted from href and prop
-const char *lockowner;			// for convenience
-int type;
-int size;
-time_t cdate;
-time_t mdate;
+	const char *filename;			// info extracted from href and prop
+	const char *lockowner;			// for convenience
+	int type;
+	int size;
+	time_t cdate;
+	time_t mdate;
 
-DAV_MULTISTATUS *multistatus;	// internal stuff
-DAV_RESPONSE *response_cursor;
-unsigned int directory_length;
-const char *additional_prop;
+	DAV_MULTISTATUS *multistatus;	// internal stuff
+	DAV_RESPONSE *response_cursor;
+	unsigned int directory_length;
+	const char *additional_prop;
 };
 
 #ifdef __cplusplus

@@ -30,79 +30,79 @@ typedef struct dav_activelock DAV_ACTIVELOCK;
 #define DAV_LOCKTYPE_UNKNOWN		0
 
 struct dav_propfind {
-DAV_PROP *prop;
-DAV_ALLPROP allprop;
-DAV_PROPNAME propname;
+	DAV_PROP *prop;
+	DAV_ALLPROP allprop;
+	DAV_PROPNAME propname;
 };
 
 struct dav_multistatus {
-DAV_RESPONSE *first_response;
-DAV_RESPONSE *last_response;
+	DAV_RESPONSE *first_response;
+	DAV_RESPONSE *last_response;
 };
 
 struct dav_response {
-char *href;
-DAV_PROPSTAT *first_propstat;
-DAV_PROPSTAT *last_propstat;
-DAV_RESPONSE *prev_response;
-DAV_RESPONSE *next_response;
+	char *href;
+	DAV_PROPSTAT *first_propstat;
+	DAV_PROPSTAT *last_propstat;
+	DAV_RESPONSE *prev_response;
+	DAV_RESPONSE *next_response;
 };
 
 struct dav_propstat {
-int status_code;
-char *status_msg;
-DAV_PROP *prop;
-DAV_PROPSTAT *prev_propstat;
-DAV_PROPSTAT *next_propstat;
+	int status_code;
+	char *status_msg;
+	DAV_PROP *prop;
+	DAV_PROPSTAT *prev_propstat;
+	DAV_PROPSTAT *next_propstat;
 };
 
 struct dav_prop {
-time_t creationdate;
-time_t getlastmodified;
-char *displayname;
-DAV_RESOURCETYPE resourcetype;
-DAV_SUPPORTEDLOCK *supportedlock;
-DAV_LOCKDISCOVERY *lockdiscovery;
-int getcontentlength;
-char *getcontenttype;
-int status_code;
-char *status_msg;
-XML_NODE *first_external_prop;
-XML_NODE *last_external_prop;
+	time_t creationdate;
+	time_t getlastmodified;
+	char *displayname;
+	DAV_RESOURCETYPE resourcetype;
+	DAV_SUPPORTEDLOCK *supportedlock;
+	DAV_LOCKDISCOVERY *lockdiscovery;
+	int getcontentlength;
+	char *getcontenttype;
+	int status_code;
+	char *status_msg;
+	XML_NODE *first_external_prop;
+	XML_NODE *last_external_prop;
 };
 
 struct dav_supportedlock {
-DAV_LOCKENTRY *first_lockentry;
-DAV_LOCKENTRY *last_lockentry;
+	DAV_LOCKENTRY *first_lockentry;
+	DAV_LOCKENTRY *last_lockentry;
 };
 
 struct dav_lockentry {
-DAV_LOCKSCOPE lockscope;
-DAV_LOCKTYPE locktype;
-DAV_LOCKENTRY *prev_lockentry;
-DAV_LOCKENTRY *next_lockentry;
+	DAV_LOCKSCOPE lockscope;
+	DAV_LOCKTYPE locktype;
+	DAV_LOCKENTRY *prev_lockentry;
+	DAV_LOCKENTRY *next_lockentry;
 };
 
 struct dav_lockinfo {
-DAV_LOCKSCOPE lockscope;
-DAV_LOCKTYPE locktype;
-char *owner;
+	DAV_LOCKSCOPE lockscope;
+	DAV_LOCKTYPE locktype;
+	char *owner;
 };
 
 struct dav_lockdiscovery {
-DAV_ACTIVELOCK *first_activelock;
-DAV_ACTIVELOCK *last_activelock;
+	DAV_ACTIVELOCK *first_activelock;
+	DAV_ACTIVELOCK *last_activelock;
 };
 
 struct dav_activelock {
-DAV_LOCKSCOPE lockscope;
-DAV_LOCKTYPE locktype;
-char *owner;
-int depth;
-char *timeout;
-char *locktoken;
-DAV_ACTIVELOCK *prev_activelock;
-DAV_ACTIVELOCK *next_activelock;
+	DAV_LOCKSCOPE lockscope;
+	DAV_LOCKTYPE locktype;
+	char *owner;
+	int depth;
+	char *timeout;
+	char *locktoken;
+	DAV_ACTIVELOCK *prev_activelock;
+	DAV_ACTIVELOCK *next_activelock;
 };
 
 int dav_create_propfind(DAV_PROPFIND **propfind);
