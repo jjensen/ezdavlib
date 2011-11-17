@@ -428,7 +428,7 @@ http_send_authorization_header_field(HTTP_CONNECTION *connection, HTTP_REQUEST *
 		nonce = http_find_auth_parameter(connection->auth_info, "nonce", "");
 		opaque = http_find_auth_parameter(connection->auth_info, "opaque", "");
 		qop = http_find_auth_parameter(connection->auth_info, "qop", NULL);
-		algorithm  = http_find_auth_parameter(connection->auth_info, "opaque", "MD5");
+		algorithm  = http_find_auth_parameter(connection->auth_info, "algorithm", "MD5");
 		if(username == NULL || password == NULL)
 		{
 			return HT_RESOURCE_UNAVAILABLE;
@@ -447,11 +447,11 @@ http_send_authorization_header_field(HTTP_CONNECTION *connection, HTTP_REQUEST *
 		DigestCalcResponse(HA1, nonce, nonce_count, cnonce, message_qop, http_method[request->method], request->resource, HEntity, response_digest);
 		if(message_qop != NULL)
 		{
-			http_send_strings(connection, "Authorization: Digest username=\"", username, "\", realm=\"", realm, "\", nonce=\"", nonce, "\", uri=\"", request->resource, "\", qop=\"", message_qop, "\", nc=", nonce_count, ", cnonce=\"", cnonce, "\", response=\"", response_digest, "\", opaque=\"", opaque, "\r\n");
+			http_send_strings(connection, "Authorization: Digest username=\"", username, "\", realm=\"", realm, "\", nonce=\"", nonce, "\", uri=\"", request->resource, "\", qop=\"", message_qop, "\", nc=", nonce_count, ", cnonce=\"", cnonce, "\", response=\"", response_digest, "\", opaque=\"", opaque, "\r\n", NULL);
 		}
 		else
 		{
-			http_send_strings(connection, "Authorization: Digest username=\"", username, "\", realm=\"", realm, "\", nonce=\"", nonce, "\", uri=\"", request->resource, "\", response=\"", response_digest, "\", opaque=\"", opaque, "\r\n");
+			http_send_strings(connection, "Authorization: Digest username=\"", username, "\", realm=\"", realm, "\", nonce=\"", nonce, "\", uri=\"", request->resource, "\", response=\"", response_digest, "\", opaque=\"", opaque, "\r\n", NULL);
 		}
 		return HT_OK;
 	}
