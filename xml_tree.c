@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdlib.h>
-#include "xmlparse.h"
 #include "strutl.h"
 #include "xml_tree.h"
 

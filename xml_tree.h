@@ -1,6 +1,6 @@
 #ifndef __XML_TREE_H__
 #define __XML_TREE_H__
-#include "xmlparse.h"
+#include <expat.h>
 #include "http.h"
 
 #define XT_FATAL_ERROR			0xFFFF
