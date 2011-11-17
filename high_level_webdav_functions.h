@@ -33,6 +33,7 @@ int dav_save_lock_database(const char *filepath);
 int dav_load_lock_database(const char *filepath);
 
 int dav_connect(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password);
+int dav_connect_lazy(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password);
 int dav_disconnect(HTTP_CONNECTION **connection);
 
 int dav_opendir(HTTP_CONNECTION *connection, const char *directory, DAV_OPENDIR_DATA *oddata);

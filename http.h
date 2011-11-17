@@ -61,6 +61,7 @@ struct http_connection {
 	char *host;
 	struct sockaddr_in address;
 	int persistent;
+	int lazy;
 	HTTP_AUTH_INFO *auth_info;
 	char read_buffer[128];
 	int read_count;
@@ -110,6 +111,7 @@ struct http_response {
 typedef int (*HTTP_EVENT_HANDLER)(HTTP_CONNECTION *connection, HTTP_REQUEST *request, HTTP_RESPONSE *response, void *data);
 
 int http_connect(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password);
+int http_connect_lazy(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password);
 int http_disconnect(HTTP_CONNECTION **connection);
 int http_add_header_field(HTTP_REQUEST *request, const char *field_name, const char *field_value);
 int http_add_header_field_number(HTTP_REQUEST *request, const char *field_name, int field_value);

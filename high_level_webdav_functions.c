@@ -377,9 +377,15 @@ dav_save_lock_database(const char *filepath)
 }
 
 int 
-dav_connect(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password)
+	dav_connect(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password)
 {
 	return http_connect(connection, host, port, username, password) == HT_OK;
+}
+
+int 
+	dav_connect_lazy(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password)
+{
+	return http_connect_lazy(connection, host, port, username, password) == HT_OK;
 }
 
 int 

@@ -50,8 +50,8 @@ http_add_auth_parameter(HTTP_AUTH_INFO *info, const char *name, const char *valu
 	return HT_OK;
 }
 
-int
-http_connect(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password)
+static int
+	http_connect_helper(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password, int lazy)
 {
 	unsigned int ipaddr = 0;
 	struct hostent *hostinfo = NULL;
@@ -96,21 +96,41 @@ http_connect(HTTP_CONNECTION **connection, const char *host, short port, const c
 			return HT_MEMORY_ERROR;
 		}
 	}
-	new_connection->socketd = socket(PF_INET, SOCK_STREAM, 0);
-	if(new_connection->socketd == INVALID_SOCKET)
+	if (!lazy)
 	{
-		http_disconnect(&new_connection);
-		return HT_RESOURCE_UNAVAILABLE;
+		new_connection->socketd = socket(PF_INET, SOCK_STREAM, 0);
+		if(new_connection->socketd == INVALID_SOCKET)
+		{
+			http_disconnect(&new_connection);
+			return HT_RESOURCE_UNAVAILABLE;
+		}
+		if(connect(new_connection->socketd, (struct sockaddr *) &new_connection->address, sizeof(struct sockaddr_in)) != 0)
+		{
+			http_disconnect(&new_connection);
+			return HT_NETWORK_ERROR;
+		}
 	}
-	if(connect(new_connection->socketd, (struct sockaddr *) &new_connection->address, sizeof(struct sockaddr_in)) != 0)
+	else
 	{
-		http_disconnect(&new_connection);
-		return HT_NETWORK_ERROR;
+		new_connection->socketd = INVALID_SOCKET;
 	}
+	new_connection->lazy = lazy;
 	new_connection->persistent = TRUE;
 	new_connection->status = HT_OK;
 	*connection = new_connection;
 	return HT_OK;
+}
+
+int
+	http_connect(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password)
+{
+	return http_connect_helper(connection, host, port, username, password, 0);
+}
+
+int
+	http_connect_lazy(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password)
+{
+	return http_connect_helper(connection, host, port, username, password, 1);
 }
 
 int
@@ -154,10 +174,19 @@ http_reconnect(HTTP_CONNECTION *connection)
 	{
 		return HT_RESOURCE_UNAVAILABLE;
 	}
-	if(connect(connection->socketd, (struct sockaddr *) &connection->address, sizeof(struct sockaddr_in)) != 0)
+	if (connection->lazy)
 	{
-		close(connection->socketd);
-		return HT_NETWORK_ERROR;
+		while (connect(connection->socketd, (struct sockaddr *) &connection->address, sizeof(struct sockaddr_in)) != 0)
+		{
+		}
+	}
+	else
+	{
+		if(connect(connection->socketd, (struct sockaddr *) &connection->address, sizeof(struct sockaddr_in)) != 0)
+		{
+			close(connection->socketd);
+			return HT_NETWORK_ERROR;
+		}
 	}
 	connection->status = HT_OK;
 	return HT_OK;
