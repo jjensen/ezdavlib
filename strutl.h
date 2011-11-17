@@ -15,9 +15,11 @@ char *strdup_base64(const char *string);
 #define strncasecmp _strnicmp
 #endif
 
+#if 0
 #ifndef strdup
 #define __NO__STRDUP__
 char *strdup(const char *s);
+#endif
 #endif
 
 #endif
