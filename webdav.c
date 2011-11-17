@@ -704,7 +704,8 @@ dav_add_find_prop_comma_delimited(DAV_PROPFIND *propfind, const char *additional
 {
 	char *name = NULL, *ns = NULL;
 	int name_start_index = 0, ns_start_index = 0, name_length, ns_length;
-	int i, error;
+	size_t i;
+	int error;
 	if(additional_prop == NULL)
 	{
 		return HT_OK;
