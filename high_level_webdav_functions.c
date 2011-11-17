@@ -511,6 +511,7 @@ dav_opendir(HTTP_CONNECTION *connection, const char *directory, DAV_OPENDIR_DATA
 int
 dav_readdir(DAV_OPENDIR_DATA *oddata)
 {
+	const char* href;
 	DAV_ACTIVELOCK *activelock = NULL;
 	if(oddata == NULL) 
 	{
@@ -531,7 +532,14 @@ dav_readdir(DAV_OPENDIR_DATA *oddata)
 	{
 		return dav_readdir(oddata);
 	}
-	oddata->filename = oddata->href + oddata->directory_length;
+	href = oddata->href;
+	if (strncmp(href, "http://", 7) == 0) {
+		href += 7;
+		while (*href && *href != '/')
+			++href;
+	}
+
+	oddata->filename = href + oddata->directory_length;
 	if(oddata->prop != NULL)
 	{
 		oddata->size = oddata->prop->getcontentlength;
