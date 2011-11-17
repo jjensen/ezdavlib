@@ -5,8 +5,8 @@
 #include "strutl.h"
 
 void CvtHex(
-    IN HASH Bin,
-    OUT HASHHEX Hex
+    const HASH Bin,
+    HASHHEX Hex
     )
 {
     unsigned short i;
@@ -29,13 +29,13 @@ void CvtHex(
 
 /* calculate H(A1) as per spec */
 void DigestCalcHA1(
-    IN char * pszAlg,
-    IN char * pszUserName,
-    IN char * pszRealm,
-    IN char * pszPassword,
-    IN char * pszNonce,
-    IN char * pszCNonce,
-    OUT HASHHEX SessionKey
+    const char * pszAlg,
+    const char * pszUserName,
+    const char * pszRealm,
+    const char * pszPassword,
+    const char * pszNonce,
+    const char * pszCNonce,
+    HASHHEX SessionKey
     )
 {
       MD5_CTX Md5Ctx;
@@ -62,15 +62,15 @@ void DigestCalcHA1(
 
 /* calculate request-digest/response-digest as per HTTP Digest spec */
 void DigestCalcResponse(
-    IN HASHHEX HA1,           /* H(A1) */
-    IN char * pszNonce,       /* nonce from server */
-    IN char * pszNonceCount,  /* 8 hex digits */
-    IN char * pszCNonce,      /* client nonce */
-    IN char * pszQop,         /* qop-value: "", "auth", "auth-int" */
-    IN char * pszMethod,      /* method from the request */
-    IN char * pszDigestUri,   /* requested URL */
-    IN HASHHEX HEntity,       /* H(entity body) if qop="auth-int" */
-    OUT HASHHEX Response      /* request-digest or response-digest */
+    const HASHHEX HA1,           /* H(A1) */
+    const char * pszNonce,       /* nonce from server */
+    const char * pszNonceCount,  /* 8 hex digits */
+    const char * pszCNonce,      /* client nonce */
+    const char * pszQop,         /* qop-value: "", "auth", "auth-int" */
+    const char * pszMethod,      /* method from the request */
+    const char * pszDigestUri,   /* requested URL */
+    const HASHHEX HEntity,       /* H(entity body) if qop="auth-int" */
+    HASHHEX Response      /* request-digest or response-digest */
     )
 {
       MD5_CTX Md5Ctx;
