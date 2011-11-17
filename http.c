@@ -62,6 +62,7 @@ http_connect(HTTP_CONNECTION **connection, const char *host, short port, const c
 	}
 	new_connection = (HTTP_CONNECTION *) malloc(sizeof(HTTP_CONNECTION));
 	memset(new_connection, 0, sizeof(HTTP_CONNECTION));
+	new_connection->read_count = new_connection->read_index = 0;
 	new_connection->address.sin_family = PF_INET;
 	new_connection->address.sin_port = (port << 8) | (port >> 8);	/* convert to big edian */
 	if(username != NULL && password != NULL)
@@ -634,10 +635,9 @@ http_create_response(HTTP_RESPONSE **response)
 int
 http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *response)
 {
-	char read_buffer[128], *line_buffer = NULL, *new_line_buffer = NULL;
+	char *line_buffer = NULL, *new_line_buffer = NULL;
 	const char *status_code = NULL, *status_msg = NULL, *version = NULL;
 	char *field_name = NULL, *field_value = NULL, *colon = NULL, *space = NULL;
-	int read_count = 0, read_index = 0, content_read_count = 0, content_size = 0;
 	int line_index = 0, line_buffer_size = 0;
 	int stage = HTTP_RECEIVING_STATUS_LINE;
 	if(connection == NULL || response == NULL)
@@ -648,10 +648,10 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 	{
 		return connection->status;
 	}
-	while(stage <= HTTP_RECEIVING_HEADER_FIELDS && (read_count = recv(connection->socketd, read_buffer, 128, MSG_PEEK)) > 0)
+	while(stage <= HTTP_RECEIVING_HEADER_FIELDS && (connection->read_count = recv(connection->socketd, connection->read_buffer, 128, 0)) > 0)
 	{
-		read_index = 0;
-		while((stage == HTTP_RECEIVING_STATUS_LINE || stage == HTTP_RECEIVING_HEADER_FIELDS) && read_index < read_count)
+		connection->read_index = 0;
+		while((stage == HTTP_RECEIVING_STATUS_LINE || stage == HTTP_RECEIVING_HEADER_FIELDS) && connection->read_index < connection->read_count)
 		{
 			if(line_index >= line_buffer_size)
 			{
@@ -664,7 +664,7 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 				}
 				line_buffer = new_line_buffer;
 			}
-			if(read_buffer[read_index] == '\n')
+			if(connection->read_buffer[connection->read_index] == '\n')
 			{ 
 				line_buffer[line_index] = '\0';  
 				if(line_index > 0)
@@ -712,16 +712,15 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 				}
 				line_index = 0;
 			}
-			else if(read_buffer[read_index] == '\r')
+			else if(connection->read_buffer[connection->read_index] == '\r')
 			{
 			}
 			else
 			{
-				line_buffer[line_index++] = read_buffer[read_index];
+				line_buffer[line_index++] = connection->read_buffer[connection->read_index];
 			}
-			read_index++;
+			connection->read_index++;
 		}
-		recv(connection->socketd, read_buffer, read_index, 0);
 	}
 	free(line_buffer);
 	return HT_OK;
@@ -730,8 +729,7 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 int
 http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *response)
 {
-	char read_buffer[128];
-	int read_count = 0, content_read_count = 0, content_size = 0;
+	int content_read_count = 0, content_size = 0;
 	int stage = HTTP_RECEIVING_CONTENT;
 	if(connection == NULL || response == NULL)
 	{
@@ -751,13 +749,19 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 	{
 		stage = HTTP_THE_DEVIL_TAKES_IT; /* no content */
 	}    
-	while(stage <= HTTP_RECEIVING_CONTENT && (read_count = recv(connection->socketd, read_buffer, 128, 0)) > 0)
+	while(stage <= HTTP_RECEIVING_CONTENT)
 	{
+		if (connection->read_index == connection->read_count)
+		{
+			if ((connection->read_count = recv(connection->socketd, connection->read_buffer, 128, 0)) <= 0)
+				break;
+			connection->read_index = 0;
+		}
 		if(response->content != NULL)
 		{
-			http_storage_write(response->content, read_buffer, read_count);
+			http_storage_write(response->content, &connection->read_buffer[connection->read_index], connection->read_count - connection->read_index);
 		}
-		content_read_count += read_count;
+		content_read_count += connection->read_count - connection->read_index;
 		if(content_size != LONG_MIN && content_read_count >= content_size)
 		{
 			if(response->content != NULL)
@@ -766,6 +770,7 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 			}
 			stage = HTTP_THE_DEVIL_TAKES_IT;
 		}
+		connection->read_index = connection->read_count;
 	}
 	if(connection->persistent)
 	{

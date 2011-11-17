@@ -62,6 +62,9 @@ struct http_connection {
 	struct sockaddr_in address;
 	int persistent;
 	HTTP_AUTH_INFO *auth_info;
+	char read_buffer[128];
+	int read_count;
+	int read_index;
 };
 
 #define hoststr(c)		((c->host != NULL) ? c->host : inet_ntoa(c->address.sin_addr))
