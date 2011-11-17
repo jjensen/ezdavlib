@@ -306,7 +306,7 @@ dav_save_lock_database(const char *filepath)
 	int error;
 	if(global_lock_database != NULL)
 	{
-		if((error == xml_tree_create(&tree)) != XT_OK)
+		if((error = xml_tree_create(&tree)) != XT_OK)
 		{
 			return error;
 		}
