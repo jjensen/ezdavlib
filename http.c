@@ -77,6 +77,11 @@ static int
 	unsigned int ipaddr = 0;
 	struct hostent *hostinfo = NULL;
 	HTTP_CONNECTION *new_connection = NULL;
+	if(connection == NULL)
+	{
+		return HT_INVALID_ARGUMENT;
+	}
+	*connection = NULL;
 	if(connection == NULL || host == NULL)
 	{
 		return HT_INVALID_ARGUMENT;
