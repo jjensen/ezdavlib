@@ -3,6 +3,10 @@
 #include <ctype.h>
 #include "strutl.h"
 
+typedef void* (*http_allocator)(void *ud, void *ptr, size_t nsize);
+extern http_allocator _http_allocator;
+extern void* _http_allocator_user_data;
+
 #define need_escaped(c) (((0 <= c) && (c <= 32)) || ((128 <= (unsigned char) c) && ((unsigned char) c <= 159)) || (c == '%'))
 const char *hex_char = "0123456789ABCDEF";
 char base64_table[] =
@@ -17,7 +21,7 @@ char *
 wd_strndup(const char *s, size_t len)
 {
 	char *new_string;
-	new_string = (char *) malloc((len + 1) * sizeof(char));
+	new_string = (char *) _http_allocator(_http_allocator_user_data, 0, (len + 1) * sizeof(char));
 	if(new_string != NULL)
 	{
 		memcpy(new_string, s, len);
@@ -29,7 +33,7 @@ wd_strndup(const char *s, size_t len)
 char *wd_strdup(const char *s)
 {
 	int length = strlen(s);
-	char *new_s = malloc(length + 1);
+	char *new_s = _http_allocator(_http_allocator_user_data, 0, length + 1);
 	if(new_s)
 	{
 		strcpy(new_s, s);
@@ -119,7 +123,7 @@ wd_strdup_url_encoded(const char *string)
 			new_length++;
 		}
 	}
-	new_string = (char *) malloc((new_length + 1) * sizeof(char));
+	new_string = (char *) _http_allocator(_http_allocator_user_data, 0, (new_length + 1) * sizeof(char));
 	if(new_string == NULL)
 	{
 		return NULL;
@@ -170,7 +174,7 @@ wd_strdup_url_decoded(const char *string)
 	int i, j, new_length = 0;
 	char *new_string = NULL;
 	new_length = strlen(string);
-	new_string = (char *) malloc((new_length + 1) * sizeof(char));
+	new_string = (char *) _http_allocator(_http_allocator_user_data, 0, (new_length + 1) * sizeof(char));
 	if(new_string == NULL)
 	{
 		return NULL;
@@ -200,7 +204,7 @@ wd_strdup_base64(const char *string)
 	int i, j, length, new_length;
 	length = strlen(string);
 	new_length = (length + 3) * 4 / 3;
-	new_string = (char *) malloc((new_length + 1) * sizeof(char));
+	new_string = (char *) _http_allocator(_http_allocator_user_data, 0, (new_length + 1) * sizeof(char));
 
 	for(i = 0, j = length, p = string; j > 2; j -= 3, p += 3)
 	{

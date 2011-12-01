@@ -3,6 +3,9 @@
 #include "strutl.h"
 #include "xml_tree.h"
 
+extern http_allocator _http_allocator;
+extern void* _http_allocator_user_data;
+
 void 
 append_child_xml_node(XML_NODE *parent_node, XML_NODE *new_node)
 {
@@ -30,10 +33,10 @@ xml_node_destroy(XML_NODE **node)
 			next_node = node_cursor->next_node;
 			xml_node_destroy(&node_cursor);
 		}
-		free((*node)->name);
-		free((*node)->ns);
-		free((*node)->data);
-		free(*node);
+		_http_allocator(_http_allocator_user_data, (*node)->name, 0);
+		_http_allocator(_http_allocator_user_data, (*node)->ns, 0);
+		_http_allocator(_http_allocator_user_data, (*node)->data, 0);
+		_http_allocator(_http_allocator_user_data, *node, 0);
 		*node = NULL;
 	}
 }
@@ -47,7 +50,7 @@ xml_node_create(XML_NODE **node, const char *name, const char *ns, const char *d
 	{
 		return XT_INVALID_ARGUMENT;
 	}
-	new_node = (XML_NODE *) malloc(sizeof(XML_NODE));
+	new_node = (XML_NODE *) _http_allocator(_http_allocator_user_data, 0, sizeof(XML_NODE));
 	if(new_node == NULL)
 	{
 		return XT_MEMORY_ERROR;
@@ -82,7 +85,7 @@ xml_tree_destroy(XML_TREE **tree)
 	if(tree != NULL && *tree != NULL)
 	{
 		xml_node_destroy(&(*tree)->root_node);
-		free(*tree);
+		_http_allocator(_http_allocator_user_data, *tree, 0);
 	}
 }
 
@@ -91,8 +94,8 @@ xml_tree_create(XML_TREE **tree)
 {
 	XML_TREE *new_tree;
 	XML_NODE *new_root_node;
-	new_tree = (XML_TREE *) malloc(sizeof(XML_TREE));
-	new_root_node = (XML_NODE *) malloc(sizeof(XML_NODE));
+	new_tree = (XML_TREE *) _http_allocator(_http_allocator_user_data, 0, sizeof(XML_TREE));
+	new_root_node = (XML_NODE *) _http_allocator(_http_allocator_user_data, 0, sizeof(XML_NODE));
 	if(new_tree == NULL || new_root_node == NULL)
 	{
 		xml_tree_destroy(&new_tree);
@@ -134,7 +137,7 @@ xml_tree_add_data(XML_TREE *tree, const char *data, int len)
 	int old_len;
 	if(tree->current_node->data == NULL)
 	{
-		new_text = (char *) malloc(len + 1);
+		new_text = (char *) _http_allocator(_http_allocator_user_data, 0, len + 1);
 		if(new_text == NULL)
 		{
 			return XT_MEMORY_ERROR;
@@ -145,7 +148,7 @@ xml_tree_add_data(XML_TREE *tree, const char *data, int len)
 	else
 	{
 		old_len = strlen(tree->current_node->data);
-		new_text = (char *) realloc(tree->current_node->data, old_len + len + 1);
+		new_text = (char *) _http_allocator(_http_allocator_user_data, tree->current_node->data, old_len + len + 1);
 		if(new_text == NULL)
 		{
 			return XT_MEMORY_ERROR;
@@ -170,7 +173,7 @@ xml_tree_add_node(XML_TREE *tree, const char *name, const char *ns, const char *
 	char *new_name = NULL;
 	if(data == NULL)
 	{
-		new_name = (char *) malloc(strlen(name) + 2);
+		new_name = (char *) _http_allocator(_http_allocator_user_data, 0, strlen(name) + 2);
 		if(new_name == NULL)
 		{
 			return XT_MEMORY_ERROR;
@@ -178,7 +181,7 @@ xml_tree_add_node(XML_TREE *tree, const char *name, const char *ns, const char *
 		strcpy(new_name, name);
 		strcat(new_name, "/");
 		xml_tree_start_node(tree, new_name, ns);
-		free(new_name);
+		_http_allocator(_http_allocator_user_data, new_name, 0);
 	}
 	else
 	{
@@ -226,7 +229,7 @@ xml_tree_start_element_handler(void *userData, const XML_Char *name, const XML_C
 	{
 		new_name = slash + 1;
 		ns_len = strlen(name) - strlen(slash);
-		new_ns = (char *) malloc(ns_len + 1);
+		new_ns = (char *) _http_allocator(_http_allocator_user_data, 0, ns_len + 1);
 		if(new_ns != NULL)
 		{
 			memcpy(new_ns, name, ns_len);
@@ -234,7 +237,7 @@ xml_tree_start_element_handler(void *userData, const XML_Char *name, const XML_C
 		}
 	}
 	xml_tree_start_node((XML_TREE *) userData, new_name, new_ns);
-	free(new_ns);
+	_http_allocator(_http_allocator_user_data, new_ns, 0);
 }
 
 void 
@@ -248,7 +251,7 @@ xml_tree_end_element_handler(void *userData, const XML_Char *name)
 	{
 		new_name = slash + 1;
 		ns_len = strlen(name) - strlen(slash);
-		new_ns = (char *) malloc(ns_len + 1);
+		new_ns = (char *) _http_allocator(_http_allocator_user_data, 0, ns_len + 1);
 		if(new_ns != NULL)
 		{
 			memcpy(new_ns, name, ns_len);
@@ -256,13 +259,28 @@ xml_tree_end_element_handler(void *userData, const XML_Char *name)
 		}
 	}
 	xml_tree_close_node((XML_TREE *) userData, new_name, new_ns);
-	free(new_ns);
+	_http_allocator(_http_allocator_user_data, new_ns, 0);
 }
 
 void 
 xml_tree_character_data_handler(void *userData,	const XML_Char *s, int len)
 {
 	xml_tree_add_data((XML_TREE *) userData, s, len);
+}
+
+static void *xml_tree_expat_malloc(size_t size)
+{
+	return _http_allocator(_http_allocator_user_data, 0, size);
+}
+
+static void *xml_tree_expat_realloc(void *ptr, size_t size)
+{
+	return _http_allocator(_http_allocator_user_data, ptr, size);
+}
+
+static void xml_tree_expat_free(void *ptr)
+{
+	_http_allocator(_http_allocator_user_data, ptr, 0);
 }
 
 int 
@@ -272,6 +290,8 @@ xml_tree_build_from_storage(XML_TREE **tree, HTTP_STORAGE *storage)
 	XML_Parser parser;
 	char read_buffer[128];
 	int read_count;
+	XML_Char tmp[2];
+	XML_Memory_Handling_Suite expatMemoryHandlingSuite;
 	if(tree == NULL || storage == NULL)
 	{
 		return XT_INVALID_ARGUMENT;
@@ -280,7 +300,12 @@ xml_tree_build_from_storage(XML_TREE **tree, HTTP_STORAGE *storage)
 	{
 		return XT_MEMORY_ERROR;
 	}
-	parser = XML_ParserCreateNS(NULL, '/');
+
+	expatMemoryHandlingSuite.malloc_fcn = xml_tree_expat_malloc;
+	expatMemoryHandlingSuite.realloc_fcn = xml_tree_expat_realloc;
+	expatMemoryHandlingSuite.free_fcn = xml_tree_expat_free;
+	*tmp = '/';
+	parser = XML_ParserCreate_MM(NULL, &expatMemoryHandlingSuite, tmp);
 	if(parser == NULL)
 	{
 		return XT_FATAL_ERROR;

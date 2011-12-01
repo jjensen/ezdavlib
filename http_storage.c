@@ -4,12 +4,15 @@
 #include "http.h"
 #include "http_storage.h"
 
+extern http_allocator _http_allocator;
+extern void* _http_allocator_user_data;
+
 void http_destroy_generic_storage(HTTP_STORAGE **storage)
 {
 	if(storage != NULL && *storage != NULL)
 	{
 		(*storage)->destroy(*storage);
-		free(*storage);
+		_http_allocator(_http_allocator_user_data, *storage, 0);
 		*storage = NULL;
 	}
 }
@@ -36,7 +39,7 @@ http_write_memory_storage(HTTP_MEMORY_STORAGE *storage, const char *data, int si
 		{
 			new_content_buffer_size += new_content_buffer_size / 4;
 		}
-		new_content_buffer = (char *) realloc(storage->content, new_content_buffer_size);
+		new_content_buffer = (char *) _http_allocator(_http_allocator_user_data, storage->content, new_content_buffer_size);
 		if(new_content_buffer == NULL)
 		{
 			return HT_MEMORY_ERROR;
@@ -93,7 +96,7 @@ http_close_memory_storage(HTTP_MEMORY_STORAGE *storage)
 void
 http_destroy_memory_storage(HTTP_MEMORY_STORAGE *storage)
 {
-	free(storage->content);
+	_http_allocator(_http_allocator_user_data, storage->content, 0);
 }
 
 int
@@ -104,7 +107,7 @@ http_create_memory_storage(HTTP_MEMORY_STORAGE **storage)
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_storage = (HTTP_MEMORY_STORAGE *) malloc(sizeof(HTTP_MEMORY_STORAGE));
+	new_storage = (HTTP_MEMORY_STORAGE *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_MEMORY_STORAGE));
 	if(new_storage == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -195,7 +198,7 @@ http_create_file_storage(HTTP_FILE_STORAGE **storage, const char *filename, cons
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_storage = (HTTP_FILE_STORAGE *) malloc(sizeof(HTTP_FILE_STORAGE));
+	new_storage = (HTTP_FILE_STORAGE *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_FILE_STORAGE));
 	if(new_storage == NULL)
 	{
 		return HT_MEMORY_ERROR;

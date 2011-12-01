@@ -9,6 +9,27 @@
 #include "digcalc.h"
 #include "date_decode.h"
 
+static void *http_default_allocator(void *ud, void *ptr, size_t nsize) {
+	(void)ud;
+	if (nsize == 0) {
+		free(ptr);
+		return NULL;
+	}
+	else
+		return realloc(ptr, nsize);
+}
+
+http_allocator _http_allocator = http_default_allocator;
+void* _http_allocator_user_data;
+
+void http_set_allocator(http_allocator allocator, void* userdata)
+{
+	_http_allocator = allocator;
+	if (!_http_allocator)
+		_http_allocator = http_default_allocator;
+	_http_allocator_user_data = userdata;
+}
+
 const char *http_method[9] = { "GET", "PUT", "POST", "LOCK", "UNLOCK", "PROPFIND", "PROPPATCH", "MKCOL", "DELETE" };
 
 void
@@ -34,7 +55,7 @@ http_add_auth_parameter(HTTP_AUTH_INFO *info, const char *name, const char *valu
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_parameter = (HTTP_AUTH_PARAMETER *) malloc(sizeof(HTTP_AUTH_PARAMETER));
+	new_parameter = (HTTP_AUTH_PARAMETER *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_AUTH_PARAMETER));
 	if(new_parameter == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -60,14 +81,14 @@ static int
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_connection = (HTTP_CONNECTION *) malloc(sizeof(HTTP_CONNECTION));
+	new_connection = (HTTP_CONNECTION *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_CONNECTION));
 	memset(new_connection, 0, sizeof(HTTP_CONNECTION));
 	new_connection->read_count = new_connection->read_index = 0;
 	new_connection->address.sin_family = PF_INET;
 	new_connection->address.sin_port = (port << 8) | (port >> 8);	/* convert to big edian */
 	if(username != NULL && password != NULL)
 	{
-		new_connection->auth_info = (HTTP_AUTH_INFO *) malloc(sizeof(HTTP_AUTH_INFO));
+		new_connection->auth_info = (HTTP_AUTH_INFO *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_AUTH_INFO));
 		if(new_connection->auth_info == NULL)
 		{
 			http_disconnect(&new_connection);
@@ -208,9 +229,9 @@ void http_destroy_auth_parameter(HTTP_AUTH_PARAMETER **parameter)
 {
 	if(parameter != NULL && *parameter != NULL)
 	{
-		free((*parameter)->name);
-		free((*parameter)->value);
-		free(*parameter);
+		_http_allocator(_http_allocator_user_data, (*parameter)->name, 0);
+		_http_allocator(_http_allocator_user_data, (*parameter)->value, 0);
+		_http_allocator(_http_allocator_user_data, *parameter, 0);
 	}
 }
 
@@ -224,8 +245,8 @@ void http_destroy_auth_info(HTTP_AUTH_INFO **auth_info)
 			next_parameter = parameter_cursor->next_parameter;
 			http_destroy_auth_parameter(&parameter_cursor);
 		}
-		free((*auth_info)->method);
-		free(*auth_info);
+		_http_allocator(_http_allocator_user_data, (*auth_info)->method, 0);
+		_http_allocator(_http_allocator_user_data, *auth_info, 0);
 		auth_info = NULL;
 	}
 }
@@ -238,9 +259,9 @@ http_disconnect(HTTP_CONNECTION **connection)
 		return HT_INVALID_ARGUMENT;
 	}
 	close((*connection)->socketd);
-	free((*connection)->host);
+	_http_allocator(_http_allocator_user_data, (*connection)->host, 0);
 	http_destroy_auth_info(&(*connection)->auth_info);
-	free(*connection);
+	_http_allocator(_http_allocator_user_data, *connection, 0);
 	*connection = NULL;
 	return HT_OK;
 }
@@ -298,9 +319,9 @@ void http_destroy_header_field(HTTP_HEADER_FIELD **field)
 {
 	if(field != NULL && *field != NULL)
 	{
-		free((*field)->name);
-		free((*field)->value);
-		free(*field);
+		_http_allocator(_http_allocator_user_data, (*field)->name, 0);
+		_http_allocator(_http_allocator_user_data, (*field)->value, 0);
+		_http_allocator(_http_allocator_user_data, *field, 0);
 	}
 }
 
@@ -309,14 +330,14 @@ void http_destroy_request(HTTP_REQUEST **request)
 	HTTP_HEADER_FIELD *field_cursor = NULL, *next_field = NULL;
 	if(request != NULL && *request != NULL)
 	{
-		free((*request)->resource);
+		_http_allocator(_http_allocator_user_data, (*request)->resource, 0);
 		for(field_cursor = (*request)->first_header_field; field_cursor != NULL; field_cursor = next_field)
 		{
 			next_field = field_cursor->next_field;
 			http_destroy_header_field(&field_cursor);
 		}
 		http_storage_destroy(&(*request)->content);
-		free(*request);
+		_http_allocator(_http_allocator_user_data, *request, 0);
 		*request = NULL;
 	}
 }
@@ -329,7 +350,7 @@ http_create_request(HTTP_REQUEST **request, int method, const char *resource)
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_request = (HTTP_REQUEST *) malloc(sizeof(HTTP_REQUEST));
+	new_request = (HTTP_REQUEST *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_REQUEST));
 	if(new_request == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -354,7 +375,7 @@ http_add_header_field(HTTP_REQUEST *request, const char *field_name, const char 
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_header_field = (HTTP_HEADER_FIELD *) malloc(sizeof(HTTP_HEADER_FIELD));
+	new_header_field = (HTTP_HEADER_FIELD *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_HEADER_FIELD));
 	if(new_header_field == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -440,14 +461,14 @@ http_send_authorization_header_field(HTTP_CONNECTION *connection, HTTP_REQUEST *
 		{
 			return HT_RESOURCE_UNAVAILABLE;
 		}
-		user_pass = (char *) malloc((strlen(username) + 1 + strlen(password) + 1) * sizeof(char));
+		user_pass = (char *) _http_allocator(_http_allocator_user_data, 0, (strlen(username) + 1 + strlen(password) + 1) * sizeof(char));
 		strcpy(user_pass, username);
 		strcat(user_pass, ":");
 		strcat(user_pass, password);
 		credentials = wd_strdup_base64(user_pass);
 		http_send_strings(connection, "Authorization: Basic ", credentials, "\r\n", NULL);
-		free(credentials);
-		free(user_pass);
+		_http_allocator(_http_allocator_user_data, credentials, 0);
+		_http_allocator(_http_allocator_user_data, user_pass, 0);
 		return HT_OK;
 	}
 	else if(strcasecmp(connection->auth_info->method, "digest") == 0)
@@ -543,7 +564,7 @@ http_add_response_header_field(HTTP_RESPONSE *response, const char *field_name, 
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_header_field = (HTTP_HEADER_FIELD *) malloc(sizeof(HTTP_HEADER_FIELD));
+	new_header_field = (HTTP_HEADER_FIELD *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_HEADER_FIELD));
 	if(new_header_field == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -583,7 +604,7 @@ http_append_last_response_header_field_value(HTTP_RESPONSE *response, const char
 		return HT_ILLEGAL_OPERATION;
 	}
 	new_field_value_length = strlen(response->last_header_field->value) + strlen(field_value);
-	new_field_value = (char *) realloc(response->last_header_field->value, new_field_value_length);
+	new_field_value = (char *) _http_allocator(_http_allocator_user_data, response->last_header_field->value, new_field_value_length);
 	if(new_field_value == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -609,8 +630,8 @@ http_set_response_status(HTTP_RESPONSE *response, const char *status_code, const
 	new_version = wd_strdup(version);
 	if(new_status_msg == NULL || new_version == NULL)
 	{
-		free(new_status_msg);
-		free(new_version);
+		_http_allocator(_http_allocator_user_data, new_status_msg, 0);
+		_http_allocator(_http_allocator_user_data, new_version, 0);
 		return HT_MEMORY_ERROR;
 	}
 	response->status_code = (status_code[0] - '0') * 100 + (status_code[1] - '0') * 10 + (status_code[2] - '0');
@@ -625,15 +646,15 @@ http_destroy_response(HTTP_RESPONSE **response)
 	HTTP_HEADER_FIELD *field_cursor = NULL, *next_field = NULL;
 	if(response != NULL && *response != NULL)
 	{
-		free((*response)->status_msg);
-		free((*response)->version);
+		_http_allocator(_http_allocator_user_data, (*response)->status_msg, 0);
+		_http_allocator(_http_allocator_user_data, (*response)->version, 0);
 		for(field_cursor = (*response)->first_header_field; field_cursor != NULL; field_cursor = next_field)
 		{
 			next_field = field_cursor->next_field;
 			http_destroy_header_field(&field_cursor);
 		}
 		http_storage_destroy(&(*response)->content);
-		free(*response);
+		_http_allocator(_http_allocator_user_data, *response, 0);
 		*response = NULL;
 	}
 }
@@ -646,7 +667,7 @@ http_create_response(HTTP_RESPONSE **response)
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_response = (HTTP_RESPONSE *) malloc(sizeof(HTTP_RESPONSE));
+	new_response = (HTTP_RESPONSE *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_RESPONSE));
 	if(new_response == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -685,10 +706,10 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 			if(line_index >= line_buffer_size)
 			{
 				line_buffer_size += 128;
-				new_line_buffer = (char *) realloc(line_buffer, line_buffer_size);
+				new_line_buffer = (char *) _http_allocator(_http_allocator_user_data, line_buffer, line_buffer_size);
 				if(new_line_buffer == NULL)
 				{
-					free(line_buffer);
+					_http_allocator(_http_allocator_user_data, line_buffer, 0);
 					return HT_MEMORY_ERROR;
 				}
 				line_buffer = new_line_buffer;
@@ -751,7 +772,7 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 			connection->read_index++;
 		}
 	}
-	free(line_buffer);
+	_http_allocator(_http_allocator_user_data, line_buffer, 0);
 	return HT_OK;
 }
 
@@ -855,7 +876,7 @@ http_scan_auth_request_parameters(HTTP_CONNECTION *connection, HTTP_RESPONSE *re
 		len = wd_strchrpos(ptr, '=');
 		if(len != -1)
 		{
-			new_parameter = (HTTP_AUTH_PARAMETER *) malloc(sizeof(HTTP_AUTH_PARAMETER));
+			new_parameter = (HTTP_AUTH_PARAMETER *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_AUTH_PARAMETER));
 			memset(new_parameter, 0, sizeof(HTTP_AUTH_PARAMETER));
 			new_parameter->name = wd_strndup(ptr, len);
 			ptr += len + 1;

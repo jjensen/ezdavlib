@@ -8,6 +8,9 @@
 #include "strutl.h"
 #include "date_decode.h"
 
+extern http_allocator _http_allocator;
+extern void* _http_allocator_user_data;
+
 int
 is_xml_node(XML_NODE *node, const char *name, const char *ns)
 {
@@ -79,7 +82,7 @@ dav_lockentry_destroy(DAV_LOCKENTRY **lockentry)
 {
 	if(lockentry != NULL && *lockentry != NULL)
 	{
-		free(*lockentry);
+		_http_allocator(_http_allocator_user_data, *lockentry, 0);
 		*lockentry = NULL;
 	}
 }
@@ -127,7 +130,7 @@ dav_supportedlock_destroy(DAV_SUPPORTEDLOCK **supportedlock)
 			next_lockentry = lockentry_cursor->next_lockentry;
 			dav_lockentry_destroy(&lockentry_cursor);
 		}
-		free(*supportedlock);
+		_http_allocator(_http_allocator_user_data, *supportedlock, 0);
 		*supportedlock = NULL;
 	}
 }
@@ -141,7 +144,7 @@ dav_process_supportedlock(DAV_SUPPORTEDLOCK *supportedlock, XML_NODE *node)
 	{
 		if(is_xml_node(node_cursor, "lockentry", "DAV:"))
 		{
-			new_lockentry = (DAV_LOCKENTRY *) malloc(sizeof(DAV_LOCKENTRY));
+			new_lockentry = (DAV_LOCKENTRY *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_LOCKENTRY));
 			if(new_lockentry == NULL)
 			{
 				return HT_MEMORY_ERROR;
@@ -184,10 +187,10 @@ dav_activelock_destroy(DAV_ACTIVELOCK **activelock)
 {
 	if(activelock != NULL && *activelock != NULL)
 	{
-		free((*activelock)->owner);
-		free((*activelock)->locktoken);
-		free((*activelock)->timeout);
-		free(*activelock);
+		_http_allocator(_http_allocator_user_data, (*activelock)->owner, 0);
+		_http_allocator(_http_allocator_user_data, (*activelock)->locktoken, 0);
+		_http_allocator(_http_allocator_user_data, (*activelock)->timeout, 0);
+		_http_allocator(_http_allocator_user_data, *activelock, 0);
 		*activelock = NULL;
 	}
 }
@@ -259,7 +262,7 @@ dav_lockdiscovery_destroy(DAV_LOCKDISCOVERY **lockdiscovery)
 			next_activelock = activelock_cursor->next_activelock;
 			dav_activelock_destroy(&activelock_cursor);
 		}
-		free(*lockdiscovery);
+		_http_allocator(_http_allocator_user_data, *lockdiscovery, 0);
 		*lockdiscovery = NULL;
 	}
 }
@@ -288,7 +291,7 @@ dav_process_lockdiscovery(DAV_LOCKDISCOVERY *lockdiscovery, XML_NODE *node)
 	{
 		if(is_xml_node(node_cursor, "activelock", "DAV:"))
 		{
-			new_activelock = (DAV_ACTIVELOCK *) malloc(sizeof(DAV_ACTIVELOCK));
+			new_activelock = (DAV_ACTIVELOCK *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_ACTIVELOCK));
 			if(new_activelock == NULL)
 			{
 				return HT_MEMORY_ERROR;
@@ -332,10 +335,10 @@ dav_prop_destroy(DAV_PROP **prop)
 		}
 		dav_lockdiscovery_destroy(&(*prop)->lockdiscovery);
 		dav_supportedlock_destroy(&(*prop)->supportedlock);
-		free((*prop)->getcontenttype);
-		free((*prop)->displayname);
-		free((*prop)->status_msg);
-		free(*prop);
+		_http_allocator(_http_allocator_user_data, (*prop)->getcontenttype, 0);
+		_http_allocator(_http_allocator_user_data, (*prop)->displayname, 0);
+		_http_allocator(_http_allocator_user_data, (*prop)->status_msg, 0);
+		_http_allocator(_http_allocator_user_data, *prop, 0);
 		*prop = NULL;
 	}
 }
@@ -349,7 +352,7 @@ dav_process_prop(DAV_PROP *prop, XML_NODE *node)
 	{
 		if(is_xml_node(node_cursor, "lockdiscovery", "DAV:"))
 		{
-			prop->lockdiscovery = (DAV_LOCKDISCOVERY *) malloc(sizeof(DAV_LOCKDISCOVERY));
+			prop->lockdiscovery = (DAV_LOCKDISCOVERY *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_LOCKDISCOVERY));
 			if(prop->lockdiscovery == NULL)
 			{
 				return HT_MEMORY_ERROR;
@@ -409,7 +412,7 @@ dav_process_prop(DAV_PROP *prop, XML_NODE *node)
 		}
 		else if(is_xml_node(node_cursor, "supportedlock", "DAV:"))
 		{
-			prop->supportedlock = (DAV_SUPPORTEDLOCK *) malloc(sizeof(DAV_SUPPORTEDLOCK));
+			prop->supportedlock = (DAV_SUPPORTEDLOCK *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_SUPPORTEDLOCK));
 			if(prop->supportedlock == NULL)
 			{
 				return HT_MEMORY_ERROR;
@@ -434,8 +437,8 @@ dav_propstat_destroy(DAV_PROPSTAT **propstat)
 	if(propstat != NULL && *propstat != NULL)
 	{
 		dav_prop_destroy(&(*propstat)->prop);
-		free((*propstat)->status_msg);
-		free(*propstat);
+		_http_allocator(_http_allocator_user_data, (*propstat)->status_msg, 0);
+		_http_allocator(_http_allocator_user_data, *propstat, 0);
 		*propstat = NULL;
 	}
 }
@@ -465,7 +468,7 @@ dav_process_propstat(DAV_PROPSTAT *propstat, XML_NODE *node)
 		}
 		else if(is_xml_node(node_cursor, "prop", "DAV:"))
 		{
-			propstat->prop = (DAV_PROP *) malloc(sizeof(DAV_PROP));
+			propstat->prop = (DAV_PROP *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_PROP));
 			if(propstat->prop == NULL)
 			{
 				return HT_MEMORY_ERROR;
@@ -488,8 +491,8 @@ dav_response_destroy(DAV_RESPONSE **response)
 			next_propstat = propstat_cursor->next_propstat;
 			dav_propstat_destroy(&propstat_cursor);
 		}
-		free((*response)->href);
-		free(*response);
+		_http_allocator(_http_allocator_user_data, (*response)->href, 0);
+		_http_allocator(_http_allocator_user_data, *response, 0);
 		*response = NULL;
 	}
 }
@@ -529,7 +532,7 @@ dav_process_response(DAV_RESPONSE *response, XML_NODE *node)
 		}
 		else if(is_xml_node(node_cursor, "propstat", "DAV:"))
 		{
-			new_propstat = (DAV_PROPSTAT *) malloc(sizeof(DAV_PROPSTAT));
+			new_propstat = (DAV_PROPSTAT *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_PROPSTAT));
 			if(new_propstat == NULL)
 			{
 				return HT_MEMORY_ERROR;
@@ -571,7 +574,7 @@ dav_multistatus_destroy(DAV_MULTISTATUS **multistatus)
 			next_response = response_cursor->next_response;
 			dav_response_destroy(&response_cursor);
 		}
-		free(*multistatus);
+		_http_allocator(_http_allocator_user_data, *multistatus, 0);
 		*multistatus = NULL;
 	}
 }
@@ -599,7 +602,7 @@ dav_process_multistatus(DAV_MULTISTATUS *multistatus, XML_NODE *node)
 	{
 		if(is_xml_node(node_cursor, "response", "DAV:"))
 		{
-			new_response = (DAV_RESPONSE *) malloc(sizeof(DAV_RESPONSE));
+			new_response = (DAV_RESPONSE *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_RESPONSE));
 			if(new_response == NULL)
 			{
 				return HT_MEMORY_ERROR;
@@ -618,7 +621,7 @@ dav_create_multistatus_from_storage(DAV_MULTISTATUS **multistatus, HTTP_STORAGE 
 	XML_TREE *tree = NULL;
 	DAV_MULTISTATUS *new_multistatus = NULL;
 	int error = HT_OK;
-	new_multistatus = (DAV_MULTISTATUS *) malloc(sizeof(DAV_MULTISTATUS));
+	new_multistatus = (DAV_MULTISTATUS *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_MULTISTATUS));
 	if(new_multistatus == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -626,7 +629,7 @@ dav_create_multistatus_from_storage(DAV_MULTISTATUS **multistatus, HTTP_STORAGE 
 	memset(new_multistatus, 0, sizeof(DAV_MULTISTATUS));
 	if((error = xml_tree_build_from_storage(&tree, storage)) != HT_OK)
 	{
-		free(new_multistatus);
+		_http_allocator(_http_allocator_user_data, new_multistatus, 0);
 		return error;
 	}
 	if(tree->root_node->first_child_node != NULL)
@@ -644,7 +647,7 @@ dav_propfind_destroy(DAV_PROPFIND **propfind)
 	if(propfind != NULL && *propfind != NULL)
 	{
 		dav_prop_destroy(&(*propfind)->prop);
-		free(*propfind);
+		_http_allocator(_http_allocator_user_data, *propfind, 0);
 		*propfind = NULL;
 	}
 }
@@ -657,7 +660,7 @@ dav_create_propfind(DAV_PROPFIND **propfind)
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_propfind = (DAV_PROPFIND *) malloc(sizeof(DAV_PROPFIND));
+	new_propfind = (DAV_PROPFIND *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_PROPFIND));
 	if(new_propfind == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -678,7 +681,7 @@ dav_add_find_custom_prop(DAV_PROPFIND *propfind, const char *name, const char *n
 	}
 	if(propfind->prop == NULL)
 	{
-		propfind->prop = malloc(sizeof(DAV_PROP));
+		propfind->prop = _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_PROP));
 		if(propfind->prop == NULL)
 		{
 			return HT_MEMORY_ERROR;
@@ -722,22 +725,22 @@ dav_add_find_prop_comma_delimited(DAV_PROPFIND *propfind, const char *additional
 				name = wd_strndup(additional_prop + name_start_index, name_length);
 				if((error = dav_add_find_custom_prop(propfind, name, ns)) != HT_OK)
 				{
-					free(ns);
-					free(name);
+					_http_allocator(_http_allocator_user_data, ns, 0);
+					_http_allocator(_http_allocator_user_data, name, 0);
 					return error;
 				}
-				free(ns);
-				free(name);  
+				_http_allocator(_http_allocator_user_data, ns, 0);
+				_http_allocator(_http_allocator_user_data, name, 0);
 			}
 			else
 			{
 				name = wd_strndup(additional_prop + name_start_index, name_length);
 				if((error = dav_add_find_prop(propfind, name)) != HT_OK)
 				{
-					free(name);
+					_http_allocator(_http_allocator_user_data, name, 0);
 					return error;   
 				}
-				free(name);
+				_http_allocator(_http_allocator_user_data, name, 0);
 			}
 			name_start_index = ns_start_index = i + 1;
 		}
@@ -829,8 +832,8 @@ dav_lockinfo_destroy(DAV_LOCKINFO **lockinfo)
 {
 	if(lockinfo != NULL && *lockinfo != NULL)
 	{
-		free((*lockinfo)->owner);
-		free(*lockinfo);
+		_http_allocator(_http_allocator_user_data, (*lockinfo)->owner, 0);
+		_http_allocator(_http_allocator_user_data, *lockinfo, 0);
 		*lockinfo = NULL;
 	}
 }
@@ -843,7 +846,7 @@ dav_create_lockinfo(DAV_LOCKINFO **lockinfo, DAV_LOCKSCOPE lockscope, DAV_LOCKTY
 	{
 		return HT_INVALID_ARGUMENT;
 	}
-	new_lockinfo = (DAV_LOCKINFO *) malloc(sizeof(DAV_LOCKINFO));
+	new_lockinfo = (DAV_LOCKINFO *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_LOCKINFO));
 	if(new_lockinfo == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -920,7 +923,7 @@ dav_create_prop_from_storage(DAV_PROP **prop, HTTP_STORAGE *storage)
 	XML_TREE *tree = NULL;
 	DAV_PROP *new_prop = NULL;
 	int error = HT_OK;
-	new_prop = (DAV_PROP *) malloc(sizeof(DAV_PROP));
+	new_prop = (DAV_PROP *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_PROP));
 	if(new_prop == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -928,7 +931,7 @@ dav_create_prop_from_storage(DAV_PROP **prop, HTTP_STORAGE *storage)
 	memset(new_prop, 0, sizeof(DAV_PROP));
 	if((error = xml_tree_build_from_storage(&tree, storage)) != HT_OK)
 	{
-		free(new_prop);
+		_http_allocator(_http_allocator_user_data, new_prop, 0);
 		return error;
 	}
 	if(tree->root_node->first_child_node != NULL)

@@ -8,6 +8,9 @@
 #include "http_storage.h"
 #include "high_level_webdav_functions.h"
 
+extern http_allocator _http_allocator;
+extern void* _http_allocator_user_data;
+
 typedef struct dav_lock_database DAV_LOCK_DATABASE;
 typedef struct dav_lockentry_info DAV_LOCKENTRY_INFO;
 
@@ -31,7 +34,7 @@ DAV_LOCK_DATABASE *global_lock_database = NULL;
 int
 dav_initialize_lock_database(void)
 {
-	global_lock_database = (DAV_LOCK_DATABASE *) malloc(sizeof(DAV_LOCK_DATABASE));
+	global_lock_database = (DAV_LOCK_DATABASE *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_LOCK_DATABASE));
 	memset(global_lock_database, 0, sizeof(DAV_LOCK_DATABASE));
 	return HT_OK;
 }
@@ -77,10 +80,10 @@ dav_destroy_lockentry_info(DAV_LOCKENTRY_INFO **lockentry)
 {
 	if(lockentry != NULL && *lockentry != NULL)
 	{
-		free((*lockentry)->host);
-		free((*lockentry)->resource);
-		free((*lockentry)->locktoken);
-		free(*lockentry);
+		_http_allocator(_http_allocator_user_data, (*lockentry)->host, 0);
+		_http_allocator(_http_allocator_user_data, (*lockentry)->resource, 0);
+		_http_allocator(_http_allocator_user_data, (*lockentry)->locktoken, 0);
+		_http_allocator(_http_allocator_user_data, *lockentry, 0);
 		*lockentry = NULL;
 	}
 }
@@ -171,7 +174,7 @@ dav_add_lockentry_to_database(const char *host, const char *resource, const char
 			return HT_INVALID_ARGUMENT;
 		}
 		dav_remove_lockentry_from_database(host, resource);
-		new_lockentry_info = (DAV_LOCKENTRY_INFO *) malloc(sizeof(DAV_LOCKENTRY_INFO));
+		new_lockentry_info = (DAV_LOCKENTRY_INFO *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_LOCKENTRY_INFO));
 		if(new_lockentry_info == NULL)
 		{
 			return HT_MEMORY_ERROR;
@@ -204,7 +207,7 @@ dav_finalize_lock_database(void)
 			next_lockentry = lockentry_cursor->next_lockentry;
 			dav_destroy_lockentry_info(&lockentry_cursor);
 		}
-		free(global_lock_database);
+		_http_allocator(_http_allocator_user_data, global_lock_database, 0);
 		global_lock_database = NULL;
 	}
 }
@@ -259,7 +262,7 @@ dav_load_lock_database(const char *filepath)
 				{
 					if(strcmp(node_cursor->name, "lockentry_info") == 0)
 					{
-						new_lockentry_info = (DAV_LOCKENTRY_INFO *) malloc(sizeof(DAV_LOCKENTRY_INFO));
+						new_lockentry_info = (DAV_LOCKENTRY_INFO *) _http_allocator(_http_allocator_user_data, 0, sizeof(DAV_LOCKENTRY_INFO));
 						memset(new_lockentry_info, 0, sizeof(DAV_LOCKENTRY_INFO));
 						for(child_node_cursor = node_cursor->first_child_node; child_node_cursor != NULL; child_node_cursor = child_node_cursor->next_node)
 						{
@@ -405,17 +408,17 @@ dav_add_if_header_field(HTTP_CONNECTION *connection, HTTP_REQUEST *request)
 		if(strlen(lockentry_info->resource) == strlen(request->resource))
 		{
 			if_field_value_length = 4 + strlen(lockentry_info->locktoken);
-			if_field_value = (char *) malloc(if_field_value_length + 1);
+			if_field_value = (char *) _http_allocator(_http_allocator_user_data, 0, if_field_value_length + 1);
 			sprintf(if_field_value, "(<%s>)", lockentry_info->locktoken);
 		}
 		else
 		{
 			if_field_value_length = 3 + strlen(lockentry_info->resource) + 4 + strlen(lockentry_info->locktoken);
-			if_field_value = (char *) malloc(if_field_value_length + 1);
+			if_field_value = (char *) _http_allocator(_http_allocator_user_data, 0, if_field_value_length + 1);
 			sprintf(if_field_value, "<%s> (<%s>)", lockentry_info->resource, lockentry_info->locktoken);
 		}
 		http_add_header_field(request, "If", if_field_value);
-		free(if_field_value);
+		_http_allocator(_http_allocator_user_data, if_field_value, 0);
 	}
 	return HT_OK;
 }
@@ -770,7 +773,7 @@ char *
 strdup_locktoken(const char *token)
 {
 	char *bracketed_token = NULL;
-	bracketed_token = (char *) malloc(strlen(token) + 4);
+	bracketed_token = (char *) _http_allocator(_http_allocator_user_data, 0, strlen(token) + 4);
 	if(bracketed_token == NULL)
 	{
 		return NULL;
@@ -793,10 +796,10 @@ dav_unlock_on_request_header(HTTP_CONNECTION *connection, HTTP_REQUEST *request,
 		bracketed_token = strdup_locktoken(lockentry_info->locktoken);
 		if((error = http_add_header_field(request, "Lock-Token", bracketed_token)) != HT_OK)
 		{
-			free(bracketed_token);
+			_http_allocator(_http_allocator_user_data, bracketed_token, 0);
 			return error;
 		}
-		free(bracketed_token);
+		_http_allocator(_http_allocator_user_data, bracketed_token, 0);
 		dav_remove_lockentry_from_database(hoststr(connection), request->resource);
 	}
 	return HT_OK;

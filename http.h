@@ -110,6 +110,9 @@ struct http_response {
 
 typedef int (*HTTP_EVENT_HANDLER)(HTTP_CONNECTION *connection, HTTP_REQUEST *request, HTTP_RESPONSE *response, void *data);
 
+typedef void* (*http_allocator)(void *ud, void *ptr, size_t nsize);
+void http_set_allocator(http_allocator allocator, void* userdata);
+
 int http_connect(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password);
 int http_connect_lazy(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password);
 int http_disconnect(HTTP_CONNECTION **connection);
