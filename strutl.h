@@ -1,25 +1,20 @@
 #ifndef __STRUTL_H__
 #define __STRUTL_H__
 
-char *strndup(const char *s, size_t len);
-char *strnunqdup(const char *s, size_t len);
-int strchrpos(const char *s, int c);
-int strchrqpos(const char *s, int c);
-void strclrws(const char **s);
-char *strdup_url_encoded(const char *string);
-char *strdup_url_decoded(const char *string);
-char *strdup_base64(const char *string);
+char *wd_strndup(const char *s, size_t len);
+char *wd_strnunqdup(const char *s, size_t len);
+int wd_strchrpos(const char *s, int c);
+int wd_strchrqpos(const char *s, int c);
+void wd_strclrws(const char **s);
+char *wd_strdup_url_encoded(const char *string);
+char *wd_strdup_url_decoded(const char *string);
+char *wd_strdup_base64(const char *string);
 
 #ifdef WIN32
 #define strcasecmp	_stricmp
 #define strncasecmp _strnicmp
 #endif
 
-#if 0
-#ifndef strdup
-#define __NO__STRDUP__
-char *strdup(const char *s);
-#endif
-#endif
+char *wd_strdup(const char *s);
 
 #endif

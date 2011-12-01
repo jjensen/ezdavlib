@@ -177,10 +177,10 @@ dav_add_lockentry_to_database(const char *host, const char *resource, const char
 			return HT_MEMORY_ERROR;
 		}
 		memset(new_lockentry_info, 0, sizeof(DAV_LOCKENTRY_INFO));
-		new_lockentry_info->host = strdup(host);
-		new_lockentry_info->resource = strdup(resource);
-		new_lockentry_info->locktoken = strdup(locktoken);
-		new_lockentry_info->owner = strdup(owner);
+		new_lockentry_info->host = wd_strdup(host);
+		new_lockentry_info->resource = wd_strdup(resource);
+		new_lockentry_info->locktoken = wd_strdup(locktoken);
+		new_lockentry_info->owner = wd_strdup(owner);
 		new_lockentry_info->depth = depth;
 		if(new_lockentry_info->host == NULL || new_lockentry_info->resource == NULL || new_lockentry_info->locktoken == NULL || new_lockentry_info->owner == NULL)
 		{
@@ -265,15 +265,15 @@ dav_load_lock_database(const char *filepath)
 						{
 							if(strcmp(child_node_cursor->name, "host") == 0)
 							{
-								new_lockentry_info->host = strdup(child_node_cursor->data);
+								new_lockentry_info->host = wd_strdup(child_node_cursor->data);
 							}
 							else if(strcmp(child_node_cursor->name, "resource") == 0)
 							{
-								new_lockentry_info->resource = strdup(child_node_cursor->data);
+								new_lockentry_info->resource = wd_strdup(child_node_cursor->data);
 							}
 							else if(strcmp(child_node_cursor->name, "locktoken") == 0)
 							{
-								new_lockentry_info->locktoken = strdup(child_node_cursor->data);
+								new_lockentry_info->locktoken = wd_strdup(child_node_cursor->data);
 							}
 							else if(strcmp(child_node_cursor->name, "depth") == 0)
 							{

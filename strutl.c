@@ -14,7 +14,7 @@ char base64_table[] =
 };
 
 char *
-strndup(const char *s, size_t len)
+wd_strndup(const char *s, size_t len)
 {
 	char *new_string;
 	new_string = (char *) malloc((len + 1) * sizeof(char));
@@ -26,8 +26,7 @@ strndup(const char *s, size_t len)
 	return new_string;
 }
 
-#ifdef __NO__STRDUP__
-char *strdup(const char *s)
+char *wd_strdup(const char *s)
 {
 	int length = strlen(s);
 	char *new_s = malloc(length + 1);
@@ -37,10 +36,9 @@ char *strdup(const char *s)
 	}
 	return new_s;
 }
-#endif
 
 char *
-strnunqdup(const char *s, size_t len)
+wd_strnunqdup(const char *s, size_t len)
 {
 	if(s[len - 1] == '"')
 	{
@@ -51,11 +49,11 @@ strnunqdup(const char *s, size_t len)
 		s++;
 		len--;
 	}
-	return strndup(s, len);
+	return wd_strndup(s, len);
 }
 
 int
-strchrpos(const char *s, int c)
+wd_strchrpos(const char *s, int c)
 {
 	int i;
 	for(i = 0; s[i] != '\0'; i++)
@@ -69,7 +67,7 @@ strchrpos(const char *s, int c)
 }
 
 int
-strchrqpos(const char *s, int c)
+wd_strchrqpos(const char *s, int c)
 {
 	int i, quoted = 0;
 	for(i = 0; s[i] != '\0'; i++)
@@ -97,7 +95,7 @@ strchrqpos(const char *s, int c)
 }
 
 void
-strclrws(const char **s)
+wd_strclrws(const char **s)
 {
 	while((*s)[0] == ' ')
 	{
@@ -106,7 +104,7 @@ strclrws(const char **s)
 }
 
 char *
-strdup_url_encoded(const char *string)
+wd_strdup_url_encoded(const char *string)
 {
 	int i, j, new_length = 0;
 	char *new_string;
@@ -167,7 +165,7 @@ unhex(const char *s, int length)
 }
 
 char *
-strdup_url_decoded(const char *string)
+wd_strdup_url_decoded(const char *string)
 {
 	int i, j, new_length = 0;
 	char *new_string = NULL;
@@ -195,7 +193,7 @@ strdup_url_decoded(const char *string)
 
 
 char *
-strdup_base64(const char *string) 
+wd_strdup_base64(const char *string)
 {
 	const char *p;
 	char *new_string;
@@ -242,11 +240,11 @@ strdup_url_host(const char *url)
 		single_slash = strchr(double_slash + 1, '/');
 		if(single_slash != NULL)
 		{
-			return strndup(double_slash + 1, strlen(double_slash + 1) - strlen(single_slash));
+			return wd_strndup(double_slash + 1, strlen(double_slash + 1) - strlen(single_slash));
 		}
 		else
 		{
-			return strdup(double_slash + 1);
+			return wd_strdup(double_slash + 1);
 		}
 	}
 	return NULL;
@@ -262,11 +260,11 @@ strdup_url_uri(const char *url)
 		single_slash = strchr(double_slash + 1, '/');
 		if(single_slash != NULL)
 		{
-			return strdup(single_slash);
+			return wd_strdup(single_slash);
 		}
 		else
 		{
-			return strdup("/");
+			return wd_strdup("/");
 		}
 	}
 	return NULL;

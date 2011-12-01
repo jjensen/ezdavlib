@@ -53,14 +53,14 @@ xml_node_create(XML_NODE **node, const char *name, const char *ns, const char *d
 		return XT_MEMORY_ERROR;
 	}
 	memset(new_node, 0, sizeof(XML_NODE));
-	new_node->name = strdup(name);
+	new_node->name = wd_strdup(name);
 	if(ns != NULL)
 	{
-		new_node->ns = strdup(ns);
+		new_node->ns = wd_strdup(ns);
 	}
 	if(data != NULL)
 	{
-		new_node->data = strdup(data);
+		new_node->data = wd_strdup(data);
 	}
 	if(new_node->name == NULL || (ns != NULL && new_node->ns == NULL) || (data != NULL && new_node->data == NULL))
 	{

@@ -40,8 +40,8 @@ http_add_auth_parameter(HTTP_AUTH_INFO *info, const char *name, const char *valu
 		return HT_MEMORY_ERROR;
 	}
 	memset(new_parameter, 0, sizeof(HTTP_AUTH_PARAMETER));
-	new_parameter->name = strdup(name);
-	new_parameter->value = strdup(value);
+	new_parameter->name = wd_strdup(name);
+	new_parameter->value = wd_strdup(value);
 	if(new_parameter->name == NULL || new_parameter->value == NULL)
 	{
 		return HT_MEMORY_ERROR;
@@ -89,7 +89,7 @@ static int
 			return HT_HOST_UNAVAILABLE;
 		}
 		memcpy(&new_connection->address.sin_addr, hostinfo->h_addr, 4);
-		new_connection->host = strdup(host);
+		new_connection->host = wd_strdup(host);
 		if(new_connection->host == NULL)
 		{
 			http_disconnect(&new_connection);
@@ -336,7 +336,7 @@ http_create_request(HTTP_REQUEST **request, int method, const char *resource)
 	}
 	memset(new_request, 0, sizeof(HTTP_REQUEST));
 	new_request->method = method;
-	new_request->resource = strdup_url_encoded(resource);
+	new_request->resource = wd_strdup_url_encoded(resource);
 	if(new_request->resource == NULL)
 	{
 		http_destroy_request(&new_request);
@@ -360,8 +360,8 @@ http_add_header_field(HTTP_REQUEST *request, const char *field_name, const char 
 		return HT_MEMORY_ERROR;
 	}
 	memset(new_header_field, 0, sizeof(HTTP_HEADER_FIELD));
-	new_header_field->name = strdup(field_name);
-	new_header_field->value = strdup(field_value);
+	new_header_field->name = wd_strdup(field_name);
+	new_header_field->value = wd_strdup(field_value);
 	if(new_header_field->name == NULL || new_header_field->value == NULL)
 	{
 		http_destroy_header_field(&new_header_field);
@@ -444,7 +444,7 @@ http_send_authorization_header_field(HTTP_CONNECTION *connection, HTTP_REQUEST *
 		strcpy(user_pass, username);
 		strcat(user_pass, ":");
 		strcat(user_pass, password);
-		credentials = strdup_base64(user_pass);
+		credentials = wd_strdup_base64(user_pass);
 		http_send_strings(connection, "Authorization: Basic ", credentials, "\r\n", NULL);
 		free(credentials);
 		free(user_pass);
@@ -549,8 +549,8 @@ http_add_response_header_field(HTTP_RESPONSE *response, const char *field_name, 
 		return HT_MEMORY_ERROR;
 	}
 	memset(new_header_field, 0, sizeof(HTTP_HEADER_FIELD));
-	new_header_field->name = strdup(field_name);
-	new_header_field->value = strdup(field_value);
+	new_header_field->name = wd_strdup(field_name);
+	new_header_field->value = wd_strdup(field_value);
 	if(new_header_field->name == NULL || new_header_field->value == NULL)
 	{
 		http_destroy_header_field(&new_header_field);
@@ -605,8 +605,8 @@ http_set_response_status(HTTP_RESPONSE *response, const char *status_code, const
 	{
 		return HT_ILLEGAL_OPERATION;
 	}
-	new_status_msg = strdup(status_msg);
-	new_version = strdup(version);
+	new_status_msg = wd_strdup(status_msg);
+	new_version = wd_strdup(version);
 	if(new_status_msg == NULL || new_version == NULL)
 	{
 		free(new_status_msg);
@@ -841,34 +841,34 @@ http_scan_auth_request_parameters(HTTP_CONNECTION *connection, HTTP_RESPONSE *re
 	{
 		return HT_RESOURCE_UNAVAILABLE;
 	}
-	strclrws(&ptr);
-	len = strchrpos(ptr, ' ');
+	wd_strclrws(&ptr);
+	len = wd_strchrpos(ptr, ' ');
 	if(len == -1)
 	{
 		return HT_RESOURCE_UNAVAILABLE;
 	}
-	connection->auth_info->method = strndup(ptr, len);
+	connection->auth_info->method = wd_strndup(ptr, len);
 	ptr += len + 1;
 	while(!end)
 	{
-		strclrws(&ptr);
-		len = strchrpos(ptr, '=');
+		wd_strclrws(&ptr);
+		len = wd_strchrpos(ptr, '=');
 		if(len != -1)
 		{
 			new_parameter = (HTTP_AUTH_PARAMETER *) malloc(sizeof(HTTP_AUTH_PARAMETER));
 			memset(new_parameter, 0, sizeof(HTTP_AUTH_PARAMETER));
-			new_parameter->name = strndup(ptr, len);
+			new_parameter->name = wd_strndup(ptr, len);
 			ptr += len + 1;
-			strclrws(&ptr);
-			len = strchrqpos(ptr, ',');
+			wd_strclrws(&ptr);
+			len = wd_strchrqpos(ptr, ',');
 			if(len != -1)
 			{
-				new_parameter->value = strnunqdup(ptr, len);
+				new_parameter->value = wd_strnunqdup(ptr, len);
 				ptr += len + 1;
 			}
 			else
 			{
-				new_parameter->value = strnunqdup(ptr, strlen(ptr));
+				new_parameter->value = wd_strnunqdup(ptr, strlen(ptr));
 				end = 1;
 			}
 			http_append_auth_request_parameter(connection->auth_info, new_parameter);

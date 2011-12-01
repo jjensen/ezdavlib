@@ -210,7 +210,7 @@ dav_process_activelock(DAV_ACTIVELOCK *activelock, XML_NODE *node)
 		{
 			if(node_cursor->first_child_node != NULL && node_cursor->first_child_node->data != NULL && activelock->owner == NULL)
 			{
-				activelock->owner = strdup(node_cursor->first_child_node->data);
+				activelock->owner = wd_strdup(node_cursor->first_child_node->data);
 			}
 		}
 		else if(is_xml_node(node_cursor, "depth", "DAV:"))
@@ -231,7 +231,7 @@ dav_process_activelock(DAV_ACTIVELOCK *activelock, XML_NODE *node)
 		{
 			if(node_cursor->data != NULL && activelock->timeout == NULL)
 			{
-				activelock->timeout = strdup(node_cursor->data);
+				activelock->timeout = wd_strdup(node_cursor->data);
 			}
 		}
 		else if(is_xml_node(node_cursor, "locktoken", "DAV:"))
@@ -240,7 +240,7 @@ dav_process_activelock(DAV_ACTIVELOCK *activelock, XML_NODE *node)
 			{
 				if(node_cursor->first_child_node->data != NULL && activelock->locktoken == NULL)
 				{
-					activelock->locktoken = strdup(node_cursor->first_child_node->data);
+					activelock->locktoken = wd_strdup(node_cursor->first_child_node->data);
 				}
 			}
 		}
@@ -382,7 +382,7 @@ dav_process_prop(DAV_PROP *prop, XML_NODE *node)
 		{
 			if(node_cursor->data != NULL && prop->displayname == NULL)
 			{
-				prop->displayname = strdup(node_cursor->data);
+				prop->displayname = wd_strdup(node_cursor->data);
 				if(prop->displayname == NULL)
 				{
 					return HT_MEMORY_ERROR;
@@ -393,7 +393,7 @@ dav_process_prop(DAV_PROP *prop, XML_NODE *node)
 		{
 			if(node_cursor->data != NULL && prop->displayname == NULL)
 			{
-				prop->getcontenttype = strdup(node_cursor->data);
+				prop->getcontenttype = wd_strdup(node_cursor->data);
 				if(prop->getcontenttype == NULL)
 				{
 					return HT_MEMORY_ERROR;
@@ -458,7 +458,7 @@ dav_process_propstat(DAV_PROPSTAT *propstat, XML_NODE *node)
 					space2 = strchr(space1 + 1, ' ');
 					if(space2 != NULL) 
 					{
-						propstat->status_msg = strdup(space2 + 1);
+						propstat->status_msg = wd_strdup(space2 + 1);
 					}
 				}
 			}
@@ -520,7 +520,7 @@ dav_process_response(DAV_RESPONSE *response, XML_NODE *node)
 		{
 			if(node_cursor->data != NULL && response->href == NULL)
 			{
-				response->href = strdup_url_decoded(node_cursor->data);
+				response->href = wd_strdup_url_decoded(node_cursor->data);
 				if(response->href == NULL)
 				{
 					return HT_MEMORY_ERROR;
@@ -718,8 +718,8 @@ dav_add_find_prop_comma_delimited(DAV_PROPFIND *propfind, const char *additional
 			name_length = i - name_start_index;
 			if(ns_length > 0)
 			{
-				ns = strndup(additional_prop + ns_start_index, ns_length);
-				name = strndup(additional_prop + name_start_index, name_length);
+				ns = wd_strndup(additional_prop + ns_start_index, ns_length);
+				name = wd_strndup(additional_prop + name_start_index, name_length);
 				if((error = dav_add_find_custom_prop(propfind, name, ns)) != HT_OK)
 				{
 					free(ns);
@@ -731,7 +731,7 @@ dav_add_find_prop_comma_delimited(DAV_PROPFIND *propfind, const char *additional
 			}
 			else
 			{
-				name = strndup(additional_prop + name_start_index, name_length);
+				name = wd_strndup(additional_prop + name_start_index, name_length);
 				if((error = dav_add_find_prop(propfind, name)) != HT_OK)
 				{
 					free(name);
@@ -851,7 +851,7 @@ dav_create_lockinfo(DAV_LOCKINFO **lockinfo, DAV_LOCKSCOPE lockscope, DAV_LOCKTY
 	memset(new_lockinfo, 0, sizeof(DAV_LOCKINFO));
 	new_lockinfo->lockscope = lockscope;
 	new_lockinfo->locktype = locktype;
-	new_lockinfo->owner = strdup(owner);
+	new_lockinfo->owner = wd_strdup(owner);
 	if(new_lockinfo->owner == NULL)
 	{
 		dav_lockinfo_destroy(&new_lockinfo);
