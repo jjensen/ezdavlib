@@ -80,7 +80,8 @@ struct http_connection {
 	int read_index;
 };
 
-#define hoststr(c)		((c->host != NULL) ? c->host : inet_ntoa(c->address.sin_addr))
+/*#define hoststr(c)		((c->host != NULL) ? c->host : inet_ntoa(c->address.sin_addr))*/
+#define hoststr(c)		(c)->host
 
 struct http_header_field {
 	char *name;
