@@ -120,6 +120,10 @@ struct http_response {
 
 typedef int (*HTTP_EVENT_HANDLER)(HTTP_CONNECTION *connection, HTTP_REQUEST *request, HTTP_RESPONSE *response, void *data);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef void* (*http_allocator)(void *ud, void *ptr, size_t nsize);
 void http_set_allocator(http_allocator allocator, void* userdata);
 
@@ -139,5 +143,9 @@ const char * http_exec_error_msg(void);
 const char * http_find_header_field(HTTP_RESPONSE *response, const char *field_name, const char *default_value);
 long int http_find_header_field_number(HTTP_RESPONSE *response, const char *field_name, int default_value);
 int http_has_header_field(HTTP_RESPONSE *response, const char *field_name, const char *field_value);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
