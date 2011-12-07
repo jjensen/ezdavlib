@@ -16,6 +16,16 @@ typedef int SOCKET;
 #include <winsock.h>
 #include <limits.h>
 #define close	closesocket
+#else
+#include <sys/socket.h>
+#include <resolv.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <arpa/inet.h>
+
+#define SOCKET					int
+#define INVALID_SOCKET			-1
 #endif
 
 #include "http_storage.h"

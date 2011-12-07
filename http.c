@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#if !defined(WIN32)
+#include <sys/select.h>
+#endif /* WIN32 */
 #include "http.h"
 #include "strutl.h"
 #include "global.h"
@@ -162,11 +165,11 @@ int
 int
 http_check_socket(HTTP_CONNECTION *connection)
 {
-	FD_SET socket_set;
-	TIMEVAL timeval = { 0, 0 };
+	fd_set socket_set;
+	struct timeval tv = { 0, 0 };
 	FD_ZERO(&socket_set);
 	FD_SET(connection->socketd, &socket_set);
-	if(select(0, &socket_set, NULL, NULL, &timeval) == 1)
+	if(select(0, &socket_set, NULL, NULL, &tv) == 1)
 	{
 		return HT_NETWORK_ERROR;
 	}
