@@ -706,7 +706,7 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 	{
 		return connection->status;
 	}
-	while(stage <= HTTP_RECEIVING_HEADER_FIELDS && (connection->read_count = recv(connection->socketd, connection->read_buffer, 128, 0)) > 0)
+	while(stage <= HTTP_RECEIVING_HEADER_FIELDS && (connection->read_count = recv(connection->socketd, connection->read_buffer, HTTP_READ_BUFFER_SIZE, 0)) > 0)
 	{
 		connection->read_index = 0;
 		while((stage == HTTP_RECEIVING_STATUS_LINE || stage == HTTP_RECEIVING_HEADER_FIELDS) && connection->read_index < connection->read_count)
@@ -811,7 +811,7 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 	{
 		if (connection->read_index == connection->read_count)
 		{
-			if ((connection->read_count = recv(connection->socketd, connection->read_buffer, 128, 0)) <= 0)
+			if ((connection->read_count = recv(connection->socketd, connection->read_buffer, HTTP_READ_BUFFER_SIZE, 0)) <= 0)
 				break;
 			connection->read_index = 0;
 		}

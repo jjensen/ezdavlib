@@ -65,6 +65,8 @@ typedef struct http_header_field HTTP_HEADER_FIELD;
 typedef struct http_auth_parameter HTTP_AUTH_PARAMETER;
 typedef struct http_auth_info HTTP_AUTH_INFO;
 
+#define HTTP_READ_BUFFER_SIZE (32*1024)
+
 struct http_connection {
 	SOCKET socketd;
 	int status;
@@ -73,7 +75,7 @@ struct http_connection {
 	int persistent;
 	int lazy;
 	HTTP_AUTH_INFO *auth_info;
-	char read_buffer[128];
+	char read_buffer[HTTP_READ_BUFFER_SIZE];
 	int read_count;
 	int read_index;
 };
