@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#include <assert.h>
+#include <ctype.h>
 #if !defined(WIN32)
 #include <sys/select.h>
 #endif /* WIN32 */
@@ -687,8 +689,9 @@ http_create_response(HTTP_RESPONSE **response)
 
 #define HTTP_RECEIVING_STATUS_LINE		1
 #define HTTP_RECEIVING_HEADER_FIELDS	2
-#define HTTP_RECEIVING_CONTENT			3
-#define HTTP_THE_DEVIL_TAKES_IT			4
+#define HTTP_RECEIVING_CHUNKED_HEADER	3
+#define HTTP_RECEIVING_CONTENT			4
+#define HTTP_THE_DEVIL_TAKES_IT			5
 
 int
 http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *response)
@@ -787,7 +790,10 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 int
 http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *response)
 {
+	char *line_buffer = NULL, *new_line_buffer = NULL;
+	int line_index = 0, line_buffer_size = 0;
 	int content_read_count = 0, content_size = 0;
+	int is_chunked = 0;
 	int stage = HTTP_RECEIVING_CONTENT;
 	if(connection == NULL || response == NULL)
 	{
@@ -801,7 +807,8 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 	{
 		content_size = http_find_header_field_number(response, "Content-Length", LONG_MIN);
 		content_read_count = 0;
-		stage = HTTP_RECEIVING_CONTENT; /* start reading the body */
+		is_chunked = strcmp(http_find_header_field(response, "Transfer-Encoding", ""), "chunked") == 0;
+		stage = is_chunked ? HTTP_RECEIVING_CHUNKED_HEADER : HTTP_RECEIVING_CONTENT; /* start reading the body */
 	}
 	else
 	{
@@ -815,20 +822,92 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 				break;
 			connection->read_index = 0;
 		}
-		if(response->content != NULL)
+
+		if (stage == HTTP_RECEIVING_CHUNKED_HEADER)
 		{
-			http_storage_write(response->content, &connection->read_buffer[connection->read_index], connection->read_count - connection->read_index);
+			while(stage == HTTP_RECEIVING_CHUNKED_HEADER && connection->read_index < connection->read_count)
+			{
+				if(line_index >= line_buffer_size)
+				{
+					line_buffer_size += 128;
+					new_line_buffer = (char *) _http_allocator(_http_allocator_user_data, line_buffer, line_buffer_size);
+					if(new_line_buffer == NULL)
+					{
+						_http_allocator(_http_allocator_user_data, line_buffer, 0);
+						return HT_MEMORY_ERROR;
+					}
+					line_buffer = new_line_buffer;
+				}
+				if(connection->read_buffer[connection->read_index] == '\n')
+				{
+					line_buffer[line_index] = '\0';
+					if(line_index > 0)
+					{
+						int ch = 0;
+						int c = 0;
+						int i = 0;
+						int numDigits = 8;
+
+						char* semicolon = strchr(line_buffer, ';');
+						if (semicolon)
+							*semicolon = 0;
+
+						ch = tolower(line_buffer[i]);
+						do {
+							if (isdigit(ch))
+								c = 16*c + (ch-'0');
+							else if (ch >= 'a' && ch <= 'f')
+								c = 16*c + (ch-'a') + 10;
+							++i;
+							ch = tolower(line_buffer[i]);
+						} while (i<numDigits && (isdigit(ch) || (ch >= 'a' && ch <= 'f')));
+
+						content_size = c;
+
+						content_read_count = 0;
+						stage = HTTP_RECEIVING_CONTENT; /* start reading the body */
+						line_index = 0;
+					}
+					else if (content_size == 0)
+					{
+						stage = HTTP_THE_DEVIL_TAKES_IT;
+					}
+				}
+				else if(connection->read_buffer[connection->read_index] == '\r')
+				{
+				}
+				else
+				{
+					line_buffer[line_index++] = connection->read_buffer[connection->read_index];
+				}
+				connection->read_index++;
+			}
 		}
-		content_read_count += connection->read_count - connection->read_index;
-		if(content_size != LONG_MIN && content_read_count >= content_size)
+		else
 		{
+			size_t content_size_to_read = min(content_size, connection->read_count - connection->read_index);
 			if(response->content != NULL)
 			{
-				http_storage_close(response->content);
+				http_storage_write(response->content, &connection->read_buffer[connection->read_index], content_size_to_read);
 			}
-			stage = HTTP_THE_DEVIL_TAKES_IT;
+			content_read_count += content_size_to_read;
+			if(content_size != LONG_MIN && content_read_count >= content_size)
+			{
+				if (!is_chunked || content_size == 0)
+				{
+					if(response->content != NULL)
+					{
+						http_storage_close(response->content);
+					}
+					stage = HTTP_THE_DEVIL_TAKES_IT;
+				}
+				if (is_chunked)
+				{
+					stage = HTTP_RECEIVING_CHUNKED_HEADER;
+				}
+			}
+			connection->read_index += content_size_to_read;
 		}
-		connection->read_index = connection->read_count;
 	}
 	if(connection->persistent)
 	{
@@ -837,6 +916,7 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 			http_request_reconnection(connection);
 		}
 	}
+	_http_allocator(_http_allocator_user_data, line_buffer, 0);
 	return HT_OK;
 }
 
