@@ -93,7 +93,7 @@ static int
 	memset(new_connection, 0, sizeof(HTTP_CONNECTION));
 	new_connection->read_count = new_connection->read_index = 0;
 	new_connection->address.sin_family = PF_INET;
-	new_connection->address.sin_port = (port << 8) | (port >> 8);	/* convert to big edian */
+	new_connection->address.sin_port = htons(port);
 	if(username != NULL && password != NULL)
 	{
 		new_connection->auth_info = (HTTP_AUTH_INFO *) _http_allocator(_http_allocator_user_data, 0, sizeof(HTTP_AUTH_INFO));
