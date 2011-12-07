@@ -1,6 +1,7 @@
 #ifndef __HIGH_LEVEL_WEBDAV_FUNCTIONS__H__
 #define __HIGH_LEVEL_WEBDAV_FUNCTIONS__H__
 #include "http.h"
+#include "webdav.h"
 
 typedef struct dav_opendir_data DAV_OPENDIR_DATA;
 #define OD_DIRECTORY	DAV_RESOURCETYPE_COLLECTION
