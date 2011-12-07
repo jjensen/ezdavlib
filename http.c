@@ -118,12 +118,12 @@ static int
 			return HT_HOST_UNAVAILABLE;
 		}
 		memcpy(&new_connection->address.sin_addr, hostinfo->h_addr, 4);
-		new_connection->host = wd_strdup(host);
-		if(new_connection->host == NULL)
-		{
-			http_disconnect(&new_connection);
-			return HT_MEMORY_ERROR;
-		}
+	}
+	new_connection->host = wd_strdup(host);
+	if(new_connection->host == NULL)
+	{
+		http_disconnect(&new_connection);
+		return HT_MEMORY_ERROR;
 	}
 	if (!lazy)
 	{
