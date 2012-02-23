@@ -522,7 +522,7 @@ http_send_authorization_header_field(HTTP_CONNECTION *connection, HTTP_REQUEST *
 int
 http_send_request(HTTP_CONNECTION *connection, HTTP_REQUEST *request)
 {
-	const char *version = "http/1.1";
+	const char *version = "HTTP/1.1";
 	char size_buffer[32] = "";
 	int read_count = 0, size = 0, error = HT_OK;
 	HTTP_HEADER_FIELD *field_cursor = NULL;
