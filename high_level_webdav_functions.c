@@ -444,6 +444,7 @@ dav_opendir_on_request_entity(HTTP_CONNECTION *connection, HTTP_REQUEST *request
 			|| (error = dav_add_find_prop(propfind, "getcontentlength")) != HT_OK
 			|| (error = dav_add_find_prop(propfind, "creationdate")) != HT_OK
 			|| (error = dav_add_find_prop(propfind, "getlastmodified")) != HT_OK
+			|| (error = dav_add_find_prop(propfind, "resourcetype")) != HT_OK
 			|| (error = dav_add_find_prop_comma_delimited(propfind, oddata->additional_prop)) != HT_OK
 			|| (error = http_create_memory_storage((HTTP_MEMORY_STORAGE **) &request->content)) != HT_OK
 			|| (error = dav_write_propfind_to_storage(propfind, request->content)) != HT_OK)
