@@ -50,8 +50,8 @@ int dav_lock(HTTP_CONNECTION *connection, const char *resource, const char *owne
 int dav_unlock(HTTP_CONNECTION *connection, const char *resource);
 int dav_abandon_lock(HTTP_CONNECTION *connection, const char *resource);
 
-int dav_error(void);
-const char * dav_error_msg(void);
+int dav_error(HTTP_CONNECTION *connection);
+const char * dav_error_msg(HTTP_CONNECTION *connection);
 
 #ifdef __cplusplus
 }

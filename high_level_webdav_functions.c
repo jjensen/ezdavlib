@@ -509,7 +509,7 @@ dav_opendir_ex(HTTP_CONNECTION *connection, const char *directory, const char *a
 	{
 		return FALSE;
 	}
-	return (http_exec_error() == 207);
+	return (http_exec_error(connection) == 207);
 }
 
 int
@@ -607,7 +607,7 @@ dav_copy_from_server(HTTP_CONNECTION *connection, const char *src, const char *d
 	{
 		return FALSE;
 	}
-	return (http_exec_error() == 200);
+	return (http_exec_error(connection) == 200);
 }
 
 typedef struct dav_copy_to_server_instance {
@@ -648,7 +648,7 @@ dav_copy_to_server(HTTP_CONNECTION *connection, const char *src, const char *des
 	{
 		return FALSE;
 	}
-	return (http_exec_error() == 200 || http_exec_error() == 201);
+	return (http_exec_error(connection) == 200 || http_exec_error(connection) == 201);
 }
 
 int
@@ -669,7 +669,7 @@ dav_mkdir(HTTP_CONNECTION *connection, const char *dir)
 	{
 		return FALSE;
 	}
-	return (http_exec_error() == 200 || http_exec_error() == 201);
+	return (http_exec_error(connection) == 200 || http_exec_error(connection) == 201);
 };
 
 int
@@ -691,11 +691,11 @@ dav_delete(HTTP_CONNECTION *connection, const char *resource)
 	{
 		return FALSE;
 	}
-	if(http_exec_error() == 204)
+	if(http_exec_error(connection) == 204)
 	{
 		dav_remove_lockentry_from_database(hoststr(connection), resource);
 	}
-	return (http_exec_error() == 204);
+	return (http_exec_error(connection) == 204);
 }
 
 int
@@ -767,7 +767,7 @@ dav_lock(HTTP_CONNECTION *connection, const char *resource, const char *owner)
 	{
 		return FALSE;
 	}
-	return (http_exec_error() == 200);
+	return (http_exec_error(connection) == 200);
 }
 
 char *
@@ -814,7 +814,7 @@ dav_unlock(HTTP_CONNECTION *connection, const char *resource)
 	{
 		return FALSE;
 	}
-	return (http_exec_error() == 204);
+	return (http_exec_error(connection) == 204);
 }
 
 int
@@ -825,13 +825,13 @@ dav_abandon_lock(HTTP_CONNECTION *connection, const char *resource)
 }
 
 int 
-dav_error(void)
+dav_error(HTTP_CONNECTION *connection)
 {
-	return http_exec_error();
+	return http_exec_error(connection);
 }
 
 const char * 
-dav_error_msg(void)
+dav_error_msg(HTTP_CONNECTION *connection)
 {
-	return http_exec_error_msg();
+	return http_exec_error_msg(connection);
 }

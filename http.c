@@ -1040,48 +1040,45 @@ http_has_header_field(HTTP_RESPONSE *response, const char *field_name, const cha
 	return FALSE;
 }
 
-static int __http_exec_error = 0;
-static char __http_exec_error_msg[256] = "";
-
 int
-http_exec_error(void)
+http_exec_error(HTTP_CONNECTION *connection)
 {
-	return __http_exec_error;
+	return connection->__http_exec_error;
 }
 
 const char *
-http_exec_error_msg(void)
+http_exec_error_msg(HTTP_CONNECTION *connection)
 {
-	return __http_exec_error_msg;
+	return connection->__http_exec_error_msg;
 }
 
 void
-http_exec_set_response_error(HTTP_RESPONSE *response)
+http_exec_set_response_error(HTTP_CONNECTION *connection, HTTP_RESPONSE *response)
 {
 	if(response != NULL)
 	{
-		__http_exec_error = response->status_code;
-		strncpy(__http_exec_error_msg, response->status_msg, 255);
-		__http_exec_error_msg[255] = '\0';
+		connection->__http_exec_error = response->status_code;
+		strncpy(connection->__http_exec_error_msg, response->status_msg, 255);
+		connection->__http_exec_error_msg[255] = '\0';
 	}
 }
 
 void
-http_exec_set_sys_error(int error)
+http_exec_set_sys_error(HTTP_CONNECTION *connection, int error)
 {
-	__http_exec_error = error;
+	connection->__http_exec_error = error;
 	switch(error)
 	{
-		case HT_OK: strcpy(__http_exec_error_msg, "Sys: OK"); break;
-		case HT_FATAL_ERROR: strcpy(__http_exec_error_msg, "Sys: Fatal errror"); break;
-		case HT_INVALID_ARGUMENT: strcpy(__http_exec_error_msg, "Sys: Invalid function argument"); break;
-		case HT_SERVICE_UNAVAILABLE: strcpy(__http_exec_error_msg, "Sys: Service unavailable"); break;
-		case HT_RESOURCE_UNAVAILABLE: strcpy(__http_exec_error_msg, "Sys: Resource unavailable"); break;
-		case HT_MEMORY_ERROR: strcpy(__http_exec_error_msg, "Sys: Memory error"); break;
-		case HT_NETWORK_ERROR: strcpy(__http_exec_error_msg, "Sys: Network error"); break;
-		case HT_ILLEGAL_OPERATION: strcpy(__http_exec_error_msg, "Sys: Illegal operation"); break;
-		case HT_HOST_UNAVAILABLE: strcpy(__http_exec_error_msg, "Sys: Host not found"); break;
-		case HT_IO_ERROR: strcpy(__http_exec_error_msg, "Sys: I/O Error"); break;
+		case HT_OK: strcpy(connection->__http_exec_error_msg, "Sys: OK"); break;
+		case HT_FATAL_ERROR: strcpy(connection->__http_exec_error_msg, "Sys: Fatal errror"); break;
+		case HT_INVALID_ARGUMENT: strcpy(connection->__http_exec_error_msg, "Sys: Invalid function argument"); break;
+		case HT_SERVICE_UNAVAILABLE: strcpy(connection->__http_exec_error_msg, "Sys: Service unavailable"); break;
+		case HT_RESOURCE_UNAVAILABLE: strcpy(connection->__http_exec_error_msg, "Sys: Resource unavailable"); break;
+		case HT_MEMORY_ERROR: strcpy(connection->__http_exec_error_msg, "Sys: Memory error"); break;
+		case HT_NETWORK_ERROR: strcpy(connection->__http_exec_error_msg, "Sys: Network error"); break;
+		case HT_ILLEGAL_OPERATION: strcpy(connection->__http_exec_error_msg, "Sys: Illegal operation"); break;
+		case HT_HOST_UNAVAILABLE: strcpy(connection->__http_exec_error_msg, "Sys: Host not found"); break;
+		case HT_IO_ERROR: strcpy(connection->__http_exec_error_msg, "Sys: I/O Error"); break;
 	}
 }
 
@@ -1098,7 +1095,7 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 	{
 		http_destroy_request(&request);
 		http_destroy_response(&response);
-		http_exec_set_sys_error(error);
+		http_exec_set_sys_error(connection, error);
 		return error;
 	}
 	if(on_request_header != NULL)
@@ -1107,7 +1104,7 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 		{
 			http_destroy_request(&request);
 			http_destroy_response(&response);
-			http_exec_set_sys_error(error);
+			http_exec_set_sys_error(connection, error);
 			return error;
 		}
 	}
@@ -1117,7 +1114,7 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 		{
 			http_destroy_request(&request);
 			http_destroy_response(&response);
-			http_exec_set_sys_error(error);
+			http_exec_set_sys_error(connection, error);
 			return error;
 		}
 	}
@@ -1126,7 +1123,7 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 	{
 		http_destroy_request(&request);
 		http_destroy_response(&response);
-		http_exec_set_sys_error(error);
+		http_exec_set_sys_error(connection, error);
 		return error;
 	}
 	if(response->status_code == 401)
@@ -1143,7 +1140,7 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 				{
 					http_destroy_request(&request);
 					http_destroy_response(&response);
-					http_exec_set_sys_error(error);
+					http_exec_set_sys_error(connection, error);
 					return error;
 				}
 			}
@@ -1154,7 +1151,7 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 		if((error = on_response_header(connection, request, response, data)) != HT_OK)
 		{
 			http_receive_response_entity(connection, response);
-			http_exec_set_sys_error(error);
+			http_exec_set_sys_error(connection, error);
 			return error;
 		}
 	}
@@ -1163,11 +1160,11 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 	{
 		if((error = on_response_entity(connection, request, response, data)) != HT_OK)
 		{
-			http_exec_set_sys_error(error);
+			http_exec_set_sys_error(connection, error);
 			return error;
 		}
 	}
-	http_exec_set_response_error(response);
+	http_exec_set_response_error(connection, response);
 	http_destroy_request(&request);
 	http_destroy_response(&response);
 	return error;

@@ -78,6 +78,8 @@ struct http_connection {
 	char read_buffer[HTTP_READ_BUFFER_SIZE];
 	int read_count;
 	int read_index;
+	int __http_exec_error;
+	char __http_exec_error_msg[256];
 };
 
 /*#define hoststr(c)		((c->host != NULL) ? c->host : inet_ntoa(c->address.sin_addr))*/
@@ -140,8 +142,8 @@ int http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 		HTTP_EVENT_HANDLER on_request_header, HTTP_EVENT_HANDLER on_request_entity, 
 		HTTP_EVENT_HANDLER on_response_header, HTTP_EVENT_HANDLER on_response_entity,
 		void *data);
-int http_exec_error(void);
-const char * http_exec_error_msg(void);
+int http_exec_error(HTTP_CONNECTION *connection);
+const char * http_exec_error_msg(HTTP_CONNECTION *connection);
 
 const char * http_find_header_field(HTTP_RESPONSE *response, const char *field_name, const char *default_value);
 long int http_find_header_field_number(HTTP_RESPONSE *response, const char *field_name, int default_value);
