@@ -65,7 +65,7 @@ typedef struct http_header_field HTTP_HEADER_FIELD;
 typedef struct http_auth_parameter HTTP_AUTH_PARAMETER;
 typedef struct http_auth_info HTTP_AUTH_INFO;
 
-#define HTTP_READ_BUFFER_SIZE (32*1024)
+#define HTTP_READ_BUFFER_SIZE (16*1024)
 
 struct http_connection {
 	SOCKET socketd;

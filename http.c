@@ -14,6 +14,95 @@
 #include "digcalc.h"
 #include "date_decode.h"
 
+/* socket_waitfd, socket_send, socket_recv, and socket_setnonblocking all borrowed from LuaSocket. */
+
+/* IO error codes */
+enum {
+    IO_DONE = 0,        /* operation completed successfully */
+    IO_TIMEOUT = -1,    /* operation timed out */
+    IO_CLOSED = -2,     /* the connection has been closed */
+	IO_UNKNOWN = -3
+};
+
+/*-------------------------------------------------------------------------*\
+* Wait for readable/writable/connected socket with timeout
+\*-------------------------------------------------------------------------*/
+#define WAITFD_R        1
+#define WAITFD_W        2
+#define WAITFD_E        4
+#define WAITFD_C        (WAITFD_E|WAITFD_W)
+
+int socket_waitfd(SOCKET socket, int sw) {
+    int ret;
+    fd_set rfds, wfds, efds, *rp = NULL, *wp = NULL, *ep = NULL;
+    if (sw & WAITFD_R) { 
+        FD_ZERO(&rfds); 
+		FD_SET(socket, &rfds);
+        rp = &rfds; 
+    }
+    if (sw & WAITFD_W) { FD_ZERO(&wfds); FD_SET(socket, &wfds); wp = &wfds; }
+    if (sw & WAITFD_C) { FD_ZERO(&efds); FD_SET(socket, &efds); ep = &efds; }
+    ret = select(0, rp, wp, ep, NULL);
+    if (ret == -1) return WSAGetLastError();
+    if (ret == 0) return IO_TIMEOUT;
+    if (sw == WAITFD_C && FD_ISSET(socket, &efds)) return IO_CLOSED;
+    return IO_DONE;
+}
+
+/*-------------------------------------------------------------------------*\
+* Send with timeout
+* On windows, if you try to send 10MB, the OS will buffer EVERYTHING 
+* this can take an awful lot of time and we will end up blocked. 
+* Therefore, whoever calls this function should not pass a huge buffer.
+\*-------------------------------------------------------------------------*/
+int socket_send(SOCKET socket, const char *data, size_t count, int flags)
+{
+    int err;
+    /* loop until we send something or we give up on error */
+    for ( ;; ) {
+        /* try to send something */
+		int put = send(socket, data, (int) count, 0);
+        /* if we sent something, we are done */
+        if (put > 0) {
+			return put;
+        }
+        /* deal with failure */
+        err = WSAGetLastError(); 
+        /* we can only proceed if there was no serious error */
+        if (err != WSAEWOULDBLOCK) return -1;
+        /* avoid busy wait */
+        if ((err = socket_waitfd(socket, WAITFD_W)) != IO_DONE) return -1;
+    } 
+    /* can't reach here */
+    return IO_UNKNOWN;
+}
+
+/*-------------------------------------------------------------------------*\
+* Receive with timeout
+\*-------------------------------------------------------------------------*/
+int socket_recv(SOCKET socket, char *data, size_t count, int flags) {
+    int err;
+    for ( ;; ) {
+        int taken = recv(socket, data, (int) count, 0);
+        if (taken > 0) {
+			return taken;
+        }
+        if (taken == 0) return IO_CLOSED;
+        err = WSAGetLastError();
+        if (err != WSAEWOULDBLOCK) return -1;
+        if ((err = socket_waitfd(socket, WAITFD_R)) != IO_DONE) return -1;
+    }
+    return IO_UNKNOWN;
+}
+
+/*-------------------------------------------------------------------------*\
+* Put socket into non-blocking mode
+\*-------------------------------------------------------------------------*/
+void socket_setnonblocking(SOCKET socket) {
+    u_long argp = 1;
+    ioctlsocket(socket, FIONBIO, &argp);
+}
+
 static void *http_default_allocator(void *ud, void *ptr, size_t nsize) {
 	(void)ud;
 	if (nsize == 0) {
@@ -140,6 +229,7 @@ static int
 			http_disconnect(&new_connection);
 			return HT_NETWORK_ERROR;
 		}
+		socket_setnonblocking(new_connection->socketd);
 	}
 	else
 	{
@@ -219,6 +309,11 @@ http_reconnect(HTTP_CONNECTION *connection)
 			return HT_NETWORK_ERROR;
 		}
 	}
+//	{
+//		int flag = 1;
+//		setsockopt(connection->socketd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+//	}
+	socket_setnonblocking(connection->socketd);
 	connection->status = HT_OK;
 	return HT_OK;
 }
@@ -276,6 +371,26 @@ http_disconnect(HTTP_CONNECTION **connection)
 	return HT_OK;
 }
 
+void
+http_collect_strings(HTTP_MEMORY_STORAGE *storage, const char *first_string, ...)
+{
+	va_list marker;
+	const char *string = NULL;
+	int length, error = HT_OK;
+	va_start(marker, first_string);
+	string = first_string;
+	while(string != NULL)
+	{
+		if(string != NULL)
+		{
+			length = strlen(string);
+			http_storage_write(storage, string, length);
+		}
+		string = va_arg(marker, const char *);
+	}  
+	va_end(marker);
+}
+
 int
 http_send_strings(HTTP_CONNECTION *connection, const char *first_string, ...)
 {
@@ -291,7 +406,7 @@ http_send_strings(HTTP_CONNECTION *connection, const char *first_string, ...)
 			if(string != NULL)
 			{
 				length = strlen(string);
-				if(send(connection->socketd, string, length, 0) != length)
+				if(socket_send(connection->socketd, string, length, 0) != length)
 				{
 					error = HT_NETWORK_ERROR;
 					break;
@@ -308,14 +423,14 @@ http_send_strings(HTTP_CONNECTION *connection, const char *first_string, ...)
 int
 http_send_storage(HTTP_CONNECTION *connection, HTTP_STORAGE *storage)
 {
-	char read_buffer[128];
+	char read_buffer[HTTP_READ_BUFFER_SIZE];
 	int read_count = 0, network_error = HT_OK, io_error;
 	if(connection->status == HT_OK)
 	{
 		http_storage_seek(storage, 0);
-		while((io_error = http_storage_read(storage, read_buffer, 128, &read_count)) == HT_OK && read_count != 0 && network_error == HT_OK)
+		while((io_error = http_storage_read(storage, read_buffer, HTTP_READ_BUFFER_SIZE, &read_count)) == HT_OK && read_count != 0 && network_error == HT_OK)
 		{
-			if(send(connection->socketd, read_buffer, read_count, 0) != read_count)
+			if(socket_send(connection->socketd, read_buffer, read_count, 0) != read_count)
 			{
 				network_error = HT_NETWORK_ERROR;
 			}
@@ -445,7 +560,7 @@ http_find_auth_parameter(HTTP_AUTH_INFO *info, const char *parameter_name, const
 }
 
 int
-http_send_authorization_header_field(HTTP_CONNECTION *connection, HTTP_REQUEST *request)
+http_collect_authorization_header_field(HTTP_MEMORY_STORAGE *storage, HTTP_CONNECTION *connection, HTTP_REQUEST *request)
 {
 	char *credentials = NULL, *user_pass = NULL, nonce_count[9], cnonce[9];
 	const char *username = NULL, *password = NULL, *realm = NULL;
@@ -476,7 +591,7 @@ http_send_authorization_header_field(HTTP_CONNECTION *connection, HTTP_REQUEST *
 		strcat(user_pass, ":");
 		strcat(user_pass, password);
 		credentials = wd_strdup_base64(user_pass);
-		http_send_strings(connection, "Authorization: Basic ", credentials, "\r\n", NULL);
+		http_collect_strings(storage, "Authorization: Basic ", credentials, "\r\n", NULL);
 		_http_allocator(_http_allocator_user_data, credentials, 0);
 		_http_allocator(_http_allocator_user_data, user_pass, 0);
 		return HT_OK;
@@ -508,11 +623,11 @@ http_send_authorization_header_field(HTTP_CONNECTION *connection, HTTP_REQUEST *
 		DigestCalcResponse(HA1, nonce, nonce_count, cnonce, message_qop, http_method[request->method], request->resource, HEntity, response_digest);
 		if(message_qop != NULL)
 		{
-			http_send_strings(connection, "Authorization: Digest username=\"", username, "\", realm=\"", realm, "\", nonce=\"", nonce, "\", uri=\"", request->resource, "\", qop=\"", message_qop, "\", nc=", nonce_count, ", cnonce=\"", cnonce, "\", response=\"", response_digest, "\", opaque=\"", opaque, "\r\n", NULL);
+			http_collect_strings(storage, "Authorization: Digest username=\"", username, "\", realm=\"", realm, "\", nonce=\"", nonce, "\", uri=\"", request->resource, "\", qop=\"", message_qop, "\", nc=", nonce_count, ", cnonce=\"", cnonce, "\", response=\"", response_digest, "\", opaque=\"", opaque, "\r\n", NULL);
 		}
 		else
 		{
-			http_send_strings(connection, "Authorization: Digest username=\"", username, "\", realm=\"", realm, "\", nonce=\"", nonce, "\", uri=\"", request->resource, "\", response=\"", response_digest, "\", opaque=\"", opaque, "\r\n", NULL);
+			http_collect_strings(storage, "Authorization: Digest username=\"", username, "\", realm=\"", realm, "\", nonce=\"", nonce, "\", uri=\"", request->resource, "\", response=\"", response_digest, "\", opaque=\"", opaque, "\r\n", NULL);
 		}
 		return HT_OK;
 	}
@@ -526,40 +641,60 @@ http_send_request(HTTP_CONNECTION *connection, HTTP_REQUEST *request)
 	char size_buffer[32] = "";
 	int read_count = 0, size = 0, error = HT_OK;
 	HTTP_HEADER_FIELD *field_cursor = NULL;
-	http_reconnect(connection);
+	HTTP_MEMORY_STORAGE* storage;
+//	http_reconnect(connection);
 	if(connection->status != HT_OK)
 	{
 		return connection->status;
 	}
-	http_send_strings(connection, http_method[request->method], " ", request->resource, " ", version, "\r\n", NULL);
+	
+	http_create_memory_storage((HTTP_MEMORY_STORAGE**)&storage);
+
+	http_collect_strings(storage, http_method[request->method], " ", request->resource, " ", version, "\r\n", NULL);
 	for(field_cursor = request->first_header_field; field_cursor != NULL; field_cursor = field_cursor->next_field)
 	{
-		http_send_strings(connection, field_cursor->name, ": ", field_cursor->value, "\r\n", NULL);
+		http_collect_strings(storage, field_cursor->name, ": ", field_cursor->value, "\r\n", NULL);
 	}
 	if(connection->host != NULL)
 	{
-		http_send_strings(connection, "Host: ", connection->host, "\r\n", NULL);
+		http_collect_strings(storage, "Host: ", connection->host, "\r\n", NULL);
 	}
 	if(connection->auth_info != NULL)
 	{
-		http_send_authorization_header_field(connection, request);
+		http_collect_authorization_header_field(storage, connection, request);
 	}
 	if(connection->persistent)
 	{
-		http_send_strings(connection, "Connection: Keep-Alive\r\n", NULL);
+		http_collect_strings(storage, "Connection: Keep-Alive\r\n", NULL);
 	}
 	else
 	{
-		http_send_strings(connection, "Connection: Close\r\n", NULL);
+		http_collect_strings(storage, "Connection: Close\r\n", NULL);
 	}
 	if(request->content != NULL)
 	{
 		http_storage_getsize(request->content, &size);
 		sprintf(size_buffer, "%d", size);
-		http_send_strings(connection, "Content-Length: ", size_buffer, "\r\n", NULL);
+		http_collect_strings(storage, "Content-Length: ", size_buffer, "\r\n", NULL);
 	}
-	http_send_strings(connection, "\r\n", NULL);
-	if(request->content != NULL)
+	http_collect_strings(storage, "\r\n", NULL);
+	if(request->content != NULL && request->method == HTTP_PROPFIND)
+	{
+		char read_buffer[HTTP_READ_BUFFER_SIZE];
+		int read_count = 0;
+		http_storage_seek(request->content, 0);
+		while(http_storage_read(request->content, read_buffer, HTTP_READ_BUFFER_SIZE, &read_count) == HT_OK && read_count != 0)
+		{
+			http_storage_write(storage, read_buffer, read_count);
+		}
+	}
+	if (http_send_storage(connection, (HTTP_STORAGE*)storage) == HT_NETWORK_ERROR)
+	{
+		http_reconnect(connection);
+		http_send_storage(connection, (HTTP_STORAGE*)storage);
+	}
+	http_storage_destroy(&storage);
+	if(request->content != NULL && request->method != HTTP_PROPFIND)
 	{
 		http_send_storage(connection, request->content);
 	}
@@ -709,7 +844,7 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 	{
 		return connection->status;
 	}
-	while(stage <= HTTP_RECEIVING_HEADER_FIELDS && (connection->read_count = recv(connection->socketd, connection->read_buffer, HTTP_READ_BUFFER_SIZE, 0)) > 0)
+	while(stage <= HTTP_RECEIVING_HEADER_FIELDS && (connection->read_count = socket_recv(connection->socketd, connection->read_buffer, HTTP_READ_BUFFER_SIZE, 0)) > 0)
 	{
 		connection->read_index = 0;
 		while((stage == HTTP_RECEIVING_STATUS_LINE || stage == HTTP_RECEIVING_HEADER_FIELDS) && connection->read_index < connection->read_count)
@@ -818,7 +953,7 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 	{
 		if (connection->read_index == connection->read_count)
 		{
-			if ((connection->read_count = recv(connection->socketd, connection->read_buffer, HTTP_READ_BUFFER_SIZE, 0)) <= 0)
+			if ((connection->read_count = socket_recv(connection->socketd, connection->read_buffer, HTTP_READ_BUFFER_SIZE, 0)) <= 0)
 				break;
 			connection->read_index = 0;
 		}
@@ -911,7 +1046,7 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 	}
 	if(connection->persistent)
 	{
-		if(!http_has_header_field(response, "Connection", "Keep-Alive"))
+		if(http_has_header_field(response, "Connection", "Close"))
 		{
 			http_request_reconnection(connection);
 		}
