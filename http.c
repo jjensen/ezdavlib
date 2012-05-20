@@ -787,8 +787,8 @@ http_send_request(HTTP_CONNECTION *connection, HTTP_REQUEST *request)
 	{
 		return connection->status;
 	}
-	
-	http_create_memory_storage((HTTP_MEMORY_STORAGE**)&storage);
+
+	http_create_memory_storage((HTTP_MEMORY_STORAGE**)&storage, NULL, 0);
 
 	http_collect_strings(storage, http_method[request->method], " ", request->resource, " ", version, "\r\n", NULL);
 	for(field_cursor = request->first_header_field; field_cursor != NULL; field_cursor = field_cursor->next_field)
