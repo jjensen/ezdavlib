@@ -30,6 +30,10 @@ http_write_memory_storage(HTTP_MEMORY_STORAGE *storage, const char *data, int si
 	new_content_size = storage->content_size + size;
 	if(new_content_size > storage->content_buffer_size)
 	{
+		if (storage->max_content_buffer_size != 0  &&  new_content_size > storage->max_content_buffer_size)
+		{
+			return HT_MEMORY_ERROR;
+		}
 		new_content_buffer_size = storage->content_buffer_size;
 		if(new_content_buffer_size == 0)
 		{
@@ -100,7 +104,7 @@ http_destroy_memory_storage(HTTP_MEMORY_STORAGE *storage)
 }
 
 int
-http_create_memory_storage(HTTP_MEMORY_STORAGE **storage)
+http_create_memory_storage(HTTP_MEMORY_STORAGE **storage, char* content, int max_content_buffer_size)
 {
 	HTTP_MEMORY_STORAGE *new_storage;
 	if(storage == NULL)
@@ -113,6 +117,9 @@ http_create_memory_storage(HTTP_MEMORY_STORAGE **storage)
 		return HT_MEMORY_ERROR;
 	}
 	memset(new_storage, 0, sizeof(HTTP_MEMORY_STORAGE));
+	new_storage->content = content;
+	new_storage->content_buffer_size = max_content_buffer_size;
+	new_storage->max_content_buffer_size = max_content_buffer_size;
 	new_storage->functions.write = (HTTP_STORAGE_WRITE) http_write_memory_storage;
 	new_storage->functions.read = (HTTP_STORAGE_READ) http_read_memory_storage;
 	new_storage->functions.seek = (HTTP_STORAGE_SEEK) http_seek_memory_storage;

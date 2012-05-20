@@ -28,6 +28,7 @@ struct http_memory_storage {
 	int content_index;
 	int content_size;
 	int content_buffer_size;
+	int max_content_buffer_size;
 };
 
 struct http_file_storage {
@@ -36,7 +37,7 @@ struct http_file_storage {
 	int file_size;
 };
 
-int http_create_memory_storage(HTTP_MEMORY_STORAGE **storage);
+int http_create_memory_storage(HTTP_MEMORY_STORAGE **storage, char* content, int max_content_buffer_size);
 int http_create_file_storage(HTTP_FILE_STORAGE **storage, const char *filename, const char *mode);
 void http_destroy_generic_storage(HTTP_STORAGE **storage);
 
