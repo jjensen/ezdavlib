@@ -5,6 +5,7 @@
 typedef struct http_storage HTTP_STORAGE;
 typedef struct http_memory_storage HTTP_MEMORY_STORAGE;
 typedef struct http_file_storage HTTP_FILE_STORAGE;
+typedef struct http_offset_file_storage HTTP_OFFSET_FILE_STORAGE;
 
 typedef int (*HTTP_STORAGE_WRITE)(HTTP_STORAGE *storage, const char *data, int length);
 typedef int (*HTTP_STORAGE_READ)(HTTP_STORAGE *storage, char *buffer, int buffer_size, int *count);
@@ -35,6 +36,17 @@ struct http_file_storage {
 	HTTP_STORAGE functions;
 	FILE *file;
 	int file_size;
+};
+
+struct http_offset_file_storage {
+	HTTP_STORAGE functions;
+	FILE *file;
+	int file_size;
+	size_t* chunk_offsets;
+	size_t* chunk_sizes;
+	int number_of_chunks;
+	int current_chunk_index;
+	int current_chunk_offset;
 };
 
 int http_create_memory_storage(HTTP_MEMORY_STORAGE **storage, char* content, int max_content_buffer_size);
