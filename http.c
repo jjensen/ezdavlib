@@ -1623,3 +1623,62 @@ void http_set_connect_callback(HTTP_CONNECTION *connection, int (*connect_callba
 	connection->connect_callback = connect_callback;
 	connection->connect_userData = userData;
 }
+
+
+typedef struct http_range_copy_from_server_instance {
+	int start;
+	int end;
+	const char *destination;
+} HTTP_RANGE_COPY_FROM_SERVER_INSTANCE;
+
+
+static int http_range_copy_from_server_on_request_header(HTTP_CONNECTION *connection, HTTP_REQUEST *request, HTTP_RESPONSE *response, void *data)
+{
+	HTTP_RANGE_COPY_FROM_SERVER_INSTANCE *instance = (HTTP_RANGE_COPY_FROM_SERVER_INSTANCE *) data;
+	char buffer[100];
+	int error = HT_OK;
+
+	if (instance->end != 0)
+		sprintf(buffer, "bytes=%d-%d", instance->start, instance->end);
+	else
+		sprintf(buffer, "bytes=%d", instance->start);
+
+	if((error = http_add_header_field(request, "Range", buffer)) != HT_OK)
+	{
+		return error;
+	}
+	return HT_OK;
+}
+
+
+static int http_range_copy_from_server_to_direct_memory_on_response_header(HTTP_CONNECTION *connection, HTTP_REQUEST *request, HTTP_RESPONSE *response, void *data)
+{
+	HTTP_RANGE_COPY_FROM_SERVER_INSTANCE *instance = (HTTP_RANGE_COPY_FROM_SERVER_INSTANCE *) data;
+	int error = HT_OK;
+	if(response->status_code == 200 || response->status_code == 206)
+	{
+		if((error = http_create_memory_storage((HTTP_MEMORY_STORAGE ** ) &response->content, (char*)instance->destination, instance->end != 0 ? instance->end - instance->start + 1 : -instance->start)) != HT_OK)
+		{
+			return error;
+		}
+	}
+	return HT_OK;
+}
+
+
+int http_range_copy_from_server_to_direct_memory(HTTP_CONNECTION *connection, const char *src, int start, int end, unsigned char *dest)
+{
+	HTTP_RANGE_COPY_FROM_SERVER_INSTANCE instance;
+	memset(&instance, 0, sizeof(HTTP_RANGE_COPY_FROM_SERVER_INSTANCE));
+	instance.start = start;
+	instance.end = end;
+	instance.destination = dest;
+	if(http_exec(connection, HTTP_GET, src, http_range_copy_from_server_on_request_header, NULL,
+				http_range_copy_from_server_to_direct_memory_on_response_header, NULL, (void *) &instance) != HT_OK)
+	{
+		//
+	}
+	return http_exec_error(connection);
+}
+
+
