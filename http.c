@@ -969,9 +969,10 @@ http_create_response(HTTP_RESPONSE **response)
 
 #define HTTP_RECEIVING_STATUS_LINE		1
 #define HTTP_RECEIVING_HEADER_FIELDS	2
-#define HTTP_RECEIVING_CHUNKED_HEADER	3
-#define HTTP_RECEIVING_CONTENT			4
-#define HTTP_THE_DEVIL_TAKES_IT			5
+#define HTTP_RECEIVING_BOUNDARY			3
+#define HTTP_RECEIVING_CHUNKED_HEADER	4
+#define HTTP_RECEIVING_CONTENT			5
+#define HTTP_THE_DEVIL_TAKES_IT			6
 
 int
 http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *response)
@@ -1074,7 +1075,13 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 	int line_index = 0, line_buffer_size = 0;
 	int content_read_count = 0, content_size = 0;
 	int is_chunked = 0;
+	int is_multipart = 0;
 	int stage = HTTP_RECEIVING_CONTENT;
+	int nextStage = HTTP_RECEIVING_CONTENT;
+	char* content_type = NULL;
+	char* boundary = NULL;
+	int multipart_content_read_count = 0, multipart_content_size = 0;
+	HTTP_RESPONSE *multipart_response = NULL;
 	if(connection == NULL || response == NULL)
 	{
 		return HT_INVALID_ARGUMENT;
@@ -1089,13 +1096,74 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 		content_read_count = 0;
 		is_chunked = strcmp(http_find_header_field(response, "Transfer-Encoding", ""), "chunked") == 0;
 		stage = is_chunked ? HTTP_RECEIVING_CHUNKED_HEADER : HTTP_RECEIVING_CONTENT; /* start reading the body */
+		{
+			char* ptr;
+			const char* in_content_type = http_find_header_field(response, "Content-Type", NULL);
+			if (in_content_type)
+			{
+				content_type = wd_strdup(in_content_type);
+
+				ptr = content_type;
+				while (*ptr  &&  *ptr != ';'  &&  *ptr != ' ')
+					++ptr;
+
+				if (*ptr == ';')
+				{
+					char* separator;
+					*ptr++ = 0;
+
+					separator = content_type;
+					while (*separator  &&  *separator != '/')
+						++separator;
+
+					if (*separator == '/')
+					{
+						*separator = 0;
+						is_multipart = strcmp(content_type, "multipart") == 0;
+					}
+
+					if (is_multipart)
+					{
+						while (*ptr  &&  *ptr == ' ')
+							++ptr;
+
+					separator = ptr;
+					while (*separator  &&  *separator != '=')
+						++separator;
+
+						if (*separator == '=')
+						{
+							*separator = 0;
+							if (strcmp(ptr, "boundary") == 0)
+								boundary = separator + 1;
+							nextStage = HTTP_RECEIVING_BOUNDARY;
+							if (!is_chunked)
+								stage = HTTP_RECEIVING_BOUNDARY;
+						}
+					}
+				}
+			}
+		}
 	}
-	if (content_size == 0)
+	if (!is_multipart  &&  content_size <= 0)
 	{
 		stage = HTTP_THE_DEVIL_TAKES_IT; /* no content */
-	}    
+	}
 	while(stage <= HTTP_RECEIVING_CONTENT)
 	{
+		if(content_size != LONG_MIN && content_read_count == content_size)
+		{
+			if (!is_chunked || content_size == 0)
+			{
+				stage = HTTP_THE_DEVIL_TAKES_IT;
+				break;
+			}
+			if (is_chunked)
+			{
+				nextStage = stage;
+				stage = HTTP_RECEIVING_CHUNKED_HEADER;
+			}
+		}
 		if (connection->read_index == connection->read_count)
 		{
 			if ((connection->read_count = socket_recv(connection->socketd, connection->read_buffer, HTTP_READ_BUFFER_SIZE, 0)) <= 0)
@@ -1103,9 +1171,9 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 			connection->read_index = 0;
 		}
 
-		if (stage == HTTP_RECEIVING_CHUNKED_HEADER)
+		if (stage == HTTP_RECEIVING_CHUNKED_HEADER  ||  stage == HTTP_RECEIVING_BOUNDARY  ||  stage == HTTP_RECEIVING_HEADER_FIELDS)
 		{
-			while(stage == HTTP_RECEIVING_CHUNKED_HEADER && connection->read_index < connection->read_count)
+			while(connection->read_index < connection->read_count)
 			{
 				if(line_index >= line_buffer_size)
 				{
@@ -1123,42 +1191,117 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 					line_buffer[line_index] = '\0';
 					if(line_index > 0)
 					{
-						int ch = 0;
-						int c = 0;
-						int i = 0;
-						int numDigits = 8;
+						if(stage == HTTP_RECEIVING_CHUNKED_HEADER)
+						{
+							int ch = 0;
+							int c = 0;
+							int i = 0;
+							int numDigits = 8;
 
-						char* semicolon = strchr(line_buffer, ';');
-						if (semicolon)
-							*semicolon = 0;
+							char* semicolon = strchr(line_buffer, ';');
+							if (semicolon)
+								*semicolon = 0;
 
-						ch = tolower(line_buffer[i]);
-						do {
-							if (isdigit(ch))
-								c = 16*c + (ch-'0');
-							else if (ch >= 'a' && ch <= 'f')
-								c = 16*c + (ch-'a') + 10;
-							++i;
 							ch = tolower(line_buffer[i]);
-						} while (i<numDigits && (isdigit(ch) || (ch >= 'a' && ch <= 'f')));
+							do {
+								if (isdigit(ch))
+									c = 16*c + (ch-'0');
+								else if (ch >= 'a' && ch <= 'f')
+									c = 16*c + (ch-'a') + 10;
+								++i;
+								ch = tolower(line_buffer[i]);
+							} while (i<numDigits && (isdigit(ch) || (ch >= 'a' && ch <= 'f')));
 
-						content_size = c;
+							content_size = c;
 
-						content_read_count = 0;
-						if (content_size == 0)
-						{
-							stage = HTTP_THE_DEVIL_TAKES_IT;
+							content_read_count = 0;
+							stage = nextStage; /* start reading the body */
+							line_index = 0;
+
+							connection->read_index++;
+							break;
+/*							else if (content_size == 0)
+							{
+								stage = HTTP_THE_DEVIL_TAKES_IT;
+							}*/
 						}
-						else
+						else if(stage == HTTP_RECEIVING_BOUNDARY)
 						{
-							stage = HTTP_RECEIVING_CONTENT; /* start reading the body */
+							if (line_index > 3  &&  line_buffer[0] == '-'  &&  line_buffer[1] == '-')
+							{
+								int is_end = line_index > 5  &&  line_buffer[line_index - 1] == '-'  &&  line_buffer[line_index - 2] == '-';
+								if (is_end)
+									line_buffer[line_index - 2] = 0;
+								if (strcmp(line_buffer + 2, boundary) == 0)
+								{
+									if (multipart_response)
+										http_destroy_response(&multipart_response);
+									if (is_end)
+									{
+										connection->read_index++;
+										stage = HTTP_THE_DEVIL_TAKES_IT;
+										break;
+									}
+									else
+									{
+										stage = HTTP_RECEIVING_HEADER_FIELDS;
+										http_create_response(&multipart_response);
+									}
+								}
+							}
 						}
-						line_index = 0;
+						else if(stage == HTTP_RECEIVING_HEADER_FIELDS)
+						{
+							if(line_buffer[0] == ' ' || line_buffer[0] == '\t')
+							{
+								char* field_value = line_buffer + 1;
+								http_append_last_response_header_field_value(multipart_response, field_value);
+							}
+							else
+							{
+								char* colon = strchr(line_buffer, ':');
+								if(colon != NULL)
+								{
+									char* field_name;
+									char* field_value;
+									colon[0] = '\0';
+									field_name = line_buffer;
+									field_value = colon + 2;
+									http_add_response_header_field(multipart_response, field_name, field_value);
+								}
+							}
+						}
 					}
-					else if (content_size == 0)
+					else
 					{
-						stage = HTTP_THE_DEVIL_TAKES_IT;
+						if (stage == HTTP_RECEIVING_HEADER_FIELDS)
+						{
+							const char* content_range = http_find_header_field(multipart_response, "Content-Range", "");
+							const char* ptr = content_range;
+							int start;
+							int end;
+							while (*ptr  &&  *ptr != ' ')
+								++ptr;
+							if (strncmp(content_range, "bytes", 5) == 0)
+							{
+								++ptr;
+								start = atoi(ptr);
+								while (*ptr  &&  *ptr != '-')
+									++ptr;
+								++ptr;
+								end = atoi(ptr);
+
+								multipart_content_size = end - start + 1;
+								multipart_content_read_count = 0;
+							}
+
+							connection->read_index++;
+							++content_read_count;
+							stage = HTTP_RECEIVING_CONTENT;
+							break;
+						}
 					}
+					line_index = 0;
 				}
 				else if(connection->read_buffer[connection->read_index] == '\r')
 				{
@@ -1168,6 +1311,7 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 					line_buffer[line_index++] = connection->read_buffer[connection->read_index];
 				}
 				connection->read_index++;
+				++content_read_count;
 			}
 		}
 		else
@@ -1175,31 +1319,34 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 #ifndef min
 #define min(a,b) ((a)<(b)?(a):(b))
 #endif
-			size_t content_size_to_read = min(content_size - content_read_count, connection->read_count - connection->read_index);
+			size_t content_size_to_read;
+			if (is_multipart)
+			{
+				content_size_to_read = min(multipart_content_size - multipart_content_read_count, connection->read_count - connection->read_index);
+				if (is_chunked)
+					content_size_to_read = min(content_size - content_read_count, content_size_to_read);
+			}
+			else
+				content_size_to_read = min(content_size - content_read_count, connection->read_count - connection->read_index);
 			if(response->content != NULL)
 			{
 				http_storage_write(response->content, &connection->read_buffer[connection->read_index], content_size_to_read);
 			}
 			content_read_count += content_size_to_read;
-			if(content_size != LONG_MIN && content_read_count >= content_size)
+			if (is_multipart)
 			{
-				if (!is_chunked || content_size == 0)
-				{
-					if(response->content != NULL)
-					{
-						http_storage_close(response->content);
-					}
-					stage = HTTP_THE_DEVIL_TAKES_IT;
-				}
-				if (is_chunked)
-				{
-					stage = HTTP_RECEIVING_CHUNKED_HEADER;
-				}
+				multipart_content_size -= content_size_to_read;
+				if (multipart_content_size == 0)
+					stage = HTTP_RECEIVING_BOUNDARY;
 			}
 			connection->read_index += content_size_to_read;
 		}
 	}
-	if(connection->persistent)
+	if(response->content != NULL)
+	{
+		http_storage_close(response->content);
+	}
+	if(connection->persistent  &&  !connection->lazy)
 	{
 		if(http_has_header_field(response, "Connection", "Close"))
 		{
@@ -1207,6 +1354,12 @@ http_receive_response_entity(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 		}
 	}
 	_http_allocator(_http_allocator_user_data, line_buffer, 0);
+	if (multipart_response)
+		http_destroy_response(&multipart_response);
+	if (content_type)
+		_http_allocator(_http_allocator_user_data, content_type, 0);
+	if (connection->read_count < 0)
+		return HT_NETWORK_ERROR;
 	return HT_OK;
 }
 
