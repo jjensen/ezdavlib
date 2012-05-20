@@ -1065,6 +1065,8 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 		}
 	}
 	_http_allocator(_http_allocator_user_data, line_buffer, 0);
+	if (connection->read_count < 0)
+		return HT_NETWORK_ERROR;
 	return HT_OK;
 }
 
