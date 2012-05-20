@@ -89,10 +89,10 @@ enum {
 int socket_waitfd(SOCKET socket, int sw) {
     int ret;
     fd_set rfds, wfds, efds, *rp = NULL, *wp = NULL, *ep = NULL;
-    if (sw & WAITFD_R) { 
-        FD_ZERO(&rfds); 
+    if (sw & WAITFD_R) {
+        FD_ZERO(&rfds);
 		FD_SET(socket, &rfds);
-        rp = &rfds; 
+        rp = &rfds;
     }
     if (sw & WAITFD_W) { FD_ZERO(&wfds); FD_SET(socket, &wfds); wp = &wfds; }
     if (sw & WAITFD_C) { FD_ZERO(&efds); FD_SET(socket, &efds); ep = &efds; }
@@ -121,7 +121,7 @@ int socket_send(SOCKET socket, const char *data, size_t count, int flags)
         if (err != SOCKET_EWOULDBLOCK) return -1;
         /* avoid busy wait */
         if ((err = socket_waitfd(socket, WAITFD_W)) != IO_DONE) return -1;
-    } 
+    }
     /* can't reach here */
     return IO_UNKNOWN;
 }
@@ -187,7 +187,7 @@ int socket_send(SOCKET socket, const char *data, size_t count, int flags)
             return put;
         }
         err = errno;
-        /* send can't really return 0, but EPIPE means the connection was 
+        /* send can't really return 0, but EPIPE means the connection was
          closed */
         if (put == 0 || err == EPIPE) return -1;
         /* we call was interrupted, just try again */
@@ -521,7 +521,7 @@ http_collect_strings(HTTP_MEMORY_STORAGE *storage, const char *first_string, ...
 			http_storage_write(storage, string, length);
 		}
 		string = va_arg(marker, const char *);
-	}  
+	}
 	va_end(marker);
 }
 
@@ -547,7 +547,7 @@ http_send_strings(HTTP_CONNECTION *connection, const char *first_string, ...)
 				}
 			}
 			string = va_arg(marker, const char *);
-		}  
+		}
 		va_end(marker);
 		connection->status = error;
 	}
@@ -995,8 +995,8 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 				line_buffer = new_line_buffer;
 			}
 			if(connection->read_buffer[connection->read_index] == '\n')
-			{ 
-				line_buffer[line_index] = '\0';  
+			{
+				line_buffer[line_index] = '\0';
 				if(line_index > 0)
 				{
 					if(stage == HTTP_RECEIVING_STATUS_LINE)
@@ -1033,8 +1033,8 @@ http_receive_response_header(HTTP_CONNECTION *connection, HTTP_RESPONSE *respons
 								field_value = colon + 2;
 								http_add_response_header_field(response, field_name, field_value);
 							}
-						}    
-					}	
+						}
+					}
 				}
 				else
 				{
