@@ -787,7 +787,7 @@ http_send_request(HTTP_CONNECTION *connection, HTTP_REQUEST *request)
 	int read_count = 0, size = 0, error = HT_OK;
 	HTTP_HEADER_FIELD *field_cursor = NULL;
 	HTTP_MEMORY_STORAGE* storage;
-//	http_reconnect(connection);
+	http_reconnect(connection);
 	if(connection->status != HT_OK)
 	{
 		return connection->status;
