@@ -57,6 +57,8 @@ struct http_connection {
 	int read_index;
 	int __http_exec_error;
 	char __http_exec_error_msg[256];
+	int (*connect_callback)(void *);
+	void *connect_userData;
 };
 
 #if defined(WIN32)
@@ -435,6 +437,9 @@ http_reconnect(HTTP_CONNECTION *connection)
 	{
 		while (connect(connection->socketd, (struct sockaddr *) &connection->address, sizeof(struct sockaddr_in)) != 0)
 		{
+			if (connection->connect_callback)
+				if (connection->connect_callback(connection->connect_userData) == 0)
+					return HT_HOST_UNAVAILABLE;
 #if defined(WIN32)
 			Sleep(100);
 #endif // WIN32
@@ -1453,4 +1458,10 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 	http_destroy_request(&request);
 	http_destroy_response(&response);
 	return error;
+}
+
+void http_set_connect_callback(HTTP_CONNECTION *connection, int (*connect_callback)(void *), void *userData)
+{
+	connection->connect_callback = connect_callback;
+	connection->connect_userData = userData;
 }

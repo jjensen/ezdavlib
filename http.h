@@ -104,6 +104,8 @@ const char * http_find_header_field(HTTP_RESPONSE *response, const char *field_n
 long int http_find_header_field_number(HTTP_RESPONSE *response, const char *field_name, int default_value);
 int http_has_header_field(HTTP_RESPONSE *response, const char *field_name, const char *field_value);
 
+void http_set_connect_callback(HTTP_CONNECTION *connection, int (*connect_callback)(void *), void *userData);
+
 #ifdef __cplusplus
 }
 #endif
