@@ -403,7 +403,7 @@ http_reconnect(HTTP_CONNECTION *connection)
 	}
 	{
 		int rcvsize = 128 * 1024;
-		setsockopt(connection->socketd, SOL_SOCKET, SO_RCVBUF, (char *)&rcvsize, (int)sizeof(rcvsize)); 
+		setsockopt(connection->socketd, SOL_SOCKET, SO_RCVBUF, (char *)&rcvsize, (int)sizeof(rcvsize));
 	}
 	{
 		int flag = 1;
@@ -1373,8 +1373,8 @@ http_exec_set_sys_error(HTTP_CONNECTION *connection, int error)
 }
 
 int
-http_exec(HTTP_CONNECTION *connection, int method, const char *resource, 
-		HTTP_EVENT_HANDLER on_request_header, HTTP_EVENT_HANDLER on_request_entity, 
+http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
+		HTTP_EVENT_HANDLER on_request_header, HTTP_EVENT_HANDLER on_request_entity,
 		HTTP_EVENT_HANDLER on_response_header, HTTP_EVENT_HANDLER on_response_entity, void *data)
 {
 	HTTP_REQUEST *request = NULL;
