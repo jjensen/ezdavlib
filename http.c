@@ -48,6 +48,7 @@ struct http_connection {
 	int status;
 	char *host;
 	struct sockaddr_in address;
+	int resolved_address;
 	int persistent;
 	int lazy;
 	HTTP_AUTH_INFO *auth_info;
@@ -287,11 +288,11 @@ http_add_auth_parameter(HTTP_AUTH_INFO *info, const char *name, const char *valu
 	return HT_OK;
 }
 
+int http_reconnect(HTTP_CONNECTION *connection);
+
 static int
 	http_connect_helper(HTTP_CONNECTION **connection, const char *host, short port, const char *username, const char *password, int lazy)
 {
-	unsigned int ipaddr = 0;
-	struct hostent *hostinfo = NULL;
 	HTTP_CONNECTION *new_connection = NULL;
 	if(connection == NULL)
 	{
@@ -319,19 +320,6 @@ static int
 		http_add_auth_parameter(new_connection->auth_info, "username", username);
 		http_add_auth_parameter(new_connection->auth_info, "password", password);
 	}
-	if((ipaddr = inet_addr(host)) != INADDR_NONE)
-	{
-		memcpy(&new_connection->address.sin_addr, &ipaddr, sizeof(struct in_addr));
-	}
-	else
-	{
-		hostinfo = (struct hostent *) gethostbyname(host);
-		if(hostinfo == NULL)
-		{
-			return HT_HOST_UNAVAILABLE;
-		}
-		memcpy(&new_connection->address.sin_addr, hostinfo->h_addr, 4);
-	}
 	new_connection->host = wd_strdup(host);
 	if(new_connection->host == NULL)
 	{
@@ -340,18 +328,11 @@ static int
 	}
 	if (!lazy)
 	{
-		new_connection->socketd = socket(AF_INET, SOCK_STREAM, 0);
-		if(new_connection->socketd == INVALID_SOCKET)
-		{
-			http_disconnect(&new_connection);
-			return HT_RESOURCE_UNAVAILABLE;
-		}
-		if(connect(new_connection->socketd, (struct sockaddr *) &new_connection->address, sizeof(struct sockaddr_in)) != 0)
+		if (http_reconnect(new_connection) == HT_NETWORK_ERROR)
 		{
 			http_disconnect(&new_connection);
 			return HT_NETWORK_ERROR;
 		}
-		socket_setnonblocking(new_connection->socketd);
 	}
 	else
 	{
@@ -393,6 +374,7 @@ http_check_socket(HTTP_CONNECTION *connection)
 int
 http_reconnect(HTTP_CONNECTION *connection)
 {
+	unsigned int ipaddr = 0;
 	if(connection == NULL)
 	{
 		return HT_INVALID_ARGUMENT;
@@ -424,6 +406,30 @@ http_reconnect(HTTP_CONNECTION *connection)
 	{
 		int flag = 1;
 		setsockopt(connection->socketd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	}
+	while (!connection->resolved_address)
+	{
+		if((ipaddr = inet_addr(connection->host)) != INADDR_NONE)
+		{
+			memcpy(&connection->address.sin_addr, &ipaddr, sizeof(struct in_addr));
+		}
+		else
+		{
+			struct hostent *hostinfo = (struct hostent *) gethostbyname(connection->host);
+			if(hostinfo == NULL)
+			{
+				if (connection->lazy)
+				{
+					if (connection->connect_callback)
+						if (connection->connect_callback(connection->connect_userData) == 0)
+							return HT_HOST_UNAVAILABLE;
+					continue;
+				}
+				return HT_HOST_UNAVAILABLE;
+			}
+			memcpy(&connection->address.sin_addr, hostinfo->h_addr, 4);
+		}
+		connection->resolved_address = 1;
 	}
 	if (connection->lazy)
 	{
