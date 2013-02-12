@@ -1,3 +1,6 @@
+#ifdef WIN32
+#include <windows.h>
+#endif /* WIN32 */
 #include "webdav.h"
 #include "high_level_webdav_functions.h"
 #include "tlsf.h"

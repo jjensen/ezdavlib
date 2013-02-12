@@ -31,6 +31,7 @@ typedef int SOCKET;
 #include <errno.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
+#include <unistd.h>
 
 #define SOCKET					int
 #define INVALID_SOCKET			-1
