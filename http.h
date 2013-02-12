@@ -100,6 +100,8 @@ int http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 int http_exec_error(HTTP_CONNECTION *connection);
 const char * http_exec_error_msg(HTTP_CONNECTION *connection);
 
+void http_exec_set_sys_error(HTTP_CONNECTION *connection, int error);
+
 const char * http_find_header_field(HTTP_RESPONSE *response, const char *field_name, const char *default_value);
 long int http_find_header_field_number(HTTP_RESPONSE *response, const char *field_name, int default_value);
 int http_has_header_field(HTTP_RESPONSE *response, const char *field_name, const char *field_value);
