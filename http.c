@@ -1615,6 +1615,8 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 	{
 		if((error = on_response_header(connection, request, response, data)) != HT_OK)
 		{
+			if (error == HT_IO_ERROR)
+				error = 404;
 			http_receive_response_entity(connection, response);
 			http_exec_set_sys_error(connection, error);
 			return error;
@@ -1625,6 +1627,8 @@ http_exec(HTTP_CONNECTION *connection, int method, const char *resource,
 	{
 		if((error = on_response_entity(connection, request, response, data)) != HT_OK)
 		{
+			if (error == HT_IO_ERROR)
+				error = 404;
 			http_exec_set_sys_error(connection, error);
 			return error;
 		}
